@@ -1,7 +1,7 @@
 import Patina from "../components/Patina";
 import BrandIcon from "./BrandIcon";
 
-const CONTACT_EMAIL = "contact@ThrKngs.ongaku.band";
+const CONTACT_EMAIL = "contact@thrkngs.ongaku.band";
 
 const VINYL = {
   title: "ThrKngs (Full Album)",
