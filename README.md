@@ -1,6 +1,6 @@
 # ThrKngs-webpage
 
-The website for **ThrKngs (Full Album)**: an audio-reactive visualizer that plays the full album, plus a store page for the vinyl.
+The website for **ThrKngs (Full Album)**: an audio-reactive visualizer that plays the full album.
 
 Live at [thrkngs.ongaku.band](https://thrkngs.ongaku.band).
 
