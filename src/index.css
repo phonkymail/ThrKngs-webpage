@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* UI accent scale, built around the favicon's neon red (#ff2a06) */
+@theme {
+  --color-ember-50: #fff2ef;
+  --color-ember-100: #ffe0d9;
+  --color-ember-200: #ffbfb0;
+  --color-ember-300: #ff917a;
+  --color-ember-400: #ff5c3d;
+  --color-ember-500: #ff2a06;
+  --color-ember-600: #e01e00;
+  --color-ember-700: #b31800;
+  --color-ember-800: #851200;
+  --color-ember-900: #570c00;
+  --color-ember-950: #2e0600;
+}
+
+@font-face {
+  font-family: "VJMono";
+  src: local("Menlo"), local("Consolas"), local("Monaco");
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: #000;
+  overflow: hidden;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #ff2a06;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scanlines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.035) 0px,
+    rgba(255, 255, 255, 0.035) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+  z-index: 40;
+}
+
+.crt-vignette::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.75) 100%);
+  z-index: 41;
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.96; }
+}
+.flicker {
+  animation: flicker 6s infinite;
+}

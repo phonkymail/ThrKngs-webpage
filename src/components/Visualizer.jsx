@@ -1,0 +1,79 @@
+import { useEffect, useRef } from "react";
+import { scenes } from "../scenes";
+
+export default function Visualizer({ sceneKey, params, getFrame, onClick, speed = 1, filter, paused = false }) {
+  const canvasRef = useRef(null);
+  const engineRef = useRef(null);
+  const paramsRef = useRef(params);
+  const getFrameRef = useRef(getFrame);
+  const rafRef = useRef(null);
+
+  paramsRef.current = params;
+  getFrameRef.current = getFrame;
+  const speedRef = useRef(speed);
+  speedRef.current = speed;
+  // skip drawing while hidden behind the store, but keep the loop alive
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const engine = scenes[sceneKey].createEngine();
+    engineRef.current = engine;
+
+    function resize() {
+      // shadowBlur (used for glow) is one of the most expensive canvas ops and
+      // its cost scales with backing-store pixel count, so cap DPR modestly
+      // rather than rendering at full retina resolution
+      // phones/tablets get 1x: their GPUs struggle with blur at high-DPR sizes
+      const coarse = window.matchMedia?.("(pointer: coarse)").matches;
+      const dpr = Math.min(window.devicePixelRatio || 1, coarse ? 1 : 1.5);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      engine.resize(w, h, paramsRef.current);
+    }
+    resize();
+    window.addEventListener("resize", resize);
+
+    let last = performance.now();
+
+    function frame(now) {
+      const deltaSeconds = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      const dt = deltaSeconds * 60 * speedRef.current; // 60fps-equivalent step, scaled by master speed
+
+      if (pausedRef.current) {
+        rafRef.current = requestAnimationFrame(frame);
+        return;
+      }
+      const levels = getFrameRef.current(now);
+      const p = paramsRef.current;
+      engine.update(dt, p, levels);
+      engine.draw(ctx, p, levels, dt);
+
+      rafRef.current = requestAnimationFrame(frame);
+    }
+    rafRef.current = requestAnimationFrame(frame);
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener("resize", resize);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sceneKey]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      onClick={onClick}
+      className="absolute inset-0 block h-full w-full cursor-pointer touch-manipulation"
+      style={{ background: "#000", filter }}
+    />
+  );
+}
