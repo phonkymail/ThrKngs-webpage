@@ -28,3 +28,6 @@ originals/
 
 # Claude Code session files
 .claude/
+
+# wrangler local state
+.wrangler/

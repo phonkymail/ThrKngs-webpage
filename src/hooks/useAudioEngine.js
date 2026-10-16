@@ -87,9 +87,12 @@ export function useAudioEngine() {
       const ctx = ensureContext();
       ctx.resume();
       disconnectSource();
-      const audioEl = new Audio(url);
+      // crossOrigin must be set before src: the album streams from another
+      // origin (R2), and without CORS the analyser would only read silence
+      const audioEl = new Audio();
       audioEl.crossOrigin = "anonymous";
       audioEl.loop = true;
+      audioEl.src = url;
       audioElRef.current = audioEl;
       const source = ctx.createMediaElementSource(audioEl);
       source.connect(analyserRef.current);

@@ -1,0 +1,12 @@
+// Cloudflare Worker serving the built site (dist/) as static files.
+// Cloudflare Workers Builds runs `npm run build`, then `npx wrangler deploy`.
+// The album mp3 is not here: it streams from the R2 bucket thrkngs-media
+// at media.ongaku.band (see src/lib/tracks.js).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "thrkngs-webpage",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}

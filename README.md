@@ -22,4 +22,9 @@ npm run preview  # serve the production build locally
 npm run lint     # oxlint
 ```
 
-The album mp3, cover art and icons are in `public/` and are copied into the build as-is.
+Cover art and icons are in `public/` and are copied into the build as-is.
+
+## Hosting
+
+- **Site:** a Cloudflare Worker serving `dist/` as static assets (`wrangler.jsonc`), deployed by Cloudflare Workers Builds on every push to `main`.
+- **Album mp3:** too large for Worker assets (25 MiB per file), so it lives in the R2 bucket `thrkngs-media` at `https://media.ongaku.band/`. The bucket's CORS policy must allow the site's origin (and `http://localhost:5173` for local dev), or the visualizer can't analyse the audio.
