@@ -2,6 +2,10 @@ import { useCallback, useRef, useState } from "react";
 
 const FFT_SIZE = 1024;
 
+// Events that count as permission to start sound. On touch screens iOS only
+// accepts the finger lifting (touchend / pointerup / click), not pointerdown.
+const UNLOCK_EVENTS = ["touchend", "pointerup", "click", "keydown"];
+
 export function useAudioEngine() {
   const ctxRef = useRef(null);
   const analyserRef = useRef(null);
@@ -22,6 +26,12 @@ export function useAudioEngine() {
 
   const ensureContext = useCallback(() => {
     if (!ctxRef.current) {
+      // iOS: play as music, so the ringer's silent switch doesn't mute Web Audio
+      try {
+        if (navigator.audioSession) navigator.audioSession.type = "playback";
+      } catch {
+        /* not supported */
+      }
       const Ctx = window.AudioContext || window.webkitAudioContext;
       ctxRef.current = new Ctx();
       const analyser = ctxRef.current.createAnalyser();
@@ -116,8 +126,7 @@ export function useAudioEngine() {
           }
           setNeedsGesture(true);
           const resume = () => {
-            window.removeEventListener("pointerdown", resume);
-            window.removeEventListener("keydown", resume);
+            UNLOCK_EVENTS.forEach((type) => window.removeEventListener(type, resume, true));
             setNeedsGesture(false);
             if (audioElRef.current !== audioEl) return;
             gestureResumeAtRef.current = performance.now();
@@ -127,8 +136,7 @@ export function useAudioEngine() {
               .then(() => setPlaying(true))
               .catch(() => setError("Could not play track."));
           };
-          window.addEventListener("pointerdown", resume);
-          window.addEventListener("keydown", resume);
+          UNLOCK_EVENTS.forEach((type) => window.addEventListener(type, resume, true));
         });
       setStatus("file");
       setFileName(name);
@@ -159,6 +167,9 @@ export function useAudioEngine() {
     // the click that just unlocked autoplay shouldn't immediately pause it
     if (performance.now() - gestureResumeAtRef.current < 500) return;
     if (el.paused) {
+      // a context created before any tap stays suspended on iOS until resumed
+      // inside one, and the music runs through it
+      ctxRef.current?.resume();
       el.play();
       setPlaying(true);
     } else {
@@ -198,6 +209,7 @@ export function useAudioEngine() {
     if (!el) return;
     el.currentTime = Number.isFinite(el.duration) ? Math.max(0, Math.min(el.duration, seconds)) : Math.max(0, seconds);
     if (el.paused) {
+      ctxRef.current?.resume();
       el.play()
         .then(() => setPlaying(true))
         .catch(() => setError("Could not play track."));
