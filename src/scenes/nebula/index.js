@@ -3,6 +3,7 @@ export { defaultParams, presets } from "./presets";
 export { randomizeParams } from "./random";
 export { default as Controls } from "./Controls";
 export const label = "Neb";
+export const name = "Nebula";
 
 // smooth settings Auto (Beat) gently wobbles, with their knob/slider ranges;
 // counts are left alone (changing them pops stars in and out and costs more)

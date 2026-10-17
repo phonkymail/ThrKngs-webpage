@@ -1,6 +1,6 @@
 import { rand, randInt, hslToHex } from "../../lib/color";
 
-const SPECTRALIZER_STYLES = ["radial-bars", "radial-dots", "wave-ring", "mirror-bars"];
+const SPECTRALIZER_STYLES = ["radial-bars", "radial-dots", "wave-ring", "mirror-bars", "logo"];
 
 export function randomizeParams() {
   const hueA = rand(0, 360);

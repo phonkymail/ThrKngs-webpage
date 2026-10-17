@@ -1,6 +1,7 @@
 import { scenes, sceneOrder } from "../scenes";
 import SeekBar from "./SeekBar";
 import TrackList from "./TrackList";
+import LevelMenu from "./LevelMenu";
 import { SceneIcon } from "./SceneIcons";
 
 // Where the store icon in the top-left corner links to.
@@ -66,20 +67,28 @@ function InfoIcon() {
 const dockIdle = "border-white/15 bg-black/40 text-white/70 active:border-ember-400/60";
 const dockBtn = "flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-sm";
 
-export default function TopBar({ sceneKey, setSceneKey, audio, playPause, playTrack, autoRandom, setAutoRandom, controlsOpen, toggleControls }) {
+export default function TopBar({ sceneKey, setSceneKey, audio, playPause, playTrack, beatOn, beatLevel, setBeatLevel, reactLevels, setReactLevel, controlsOpen, toggleControls }) {
   const isPlaying = audio.status === "file" && audio.playing;
 
-  const diceProps = {
-    onClick: () => setAutoRandom(!autoRandom),
-    "aria-label": autoRandom ? "Turn off random on beat" : "Turn on random on beat",
-    "aria-pressed": autoRandom,
-    title: autoRandom ? "Random on beat: on" : "Random on beat: off",
+  const beatProps = {
+    label: "Random on beat",
+    icon: <DiceIcon />,
+    lit: beatOn,
+    level: beatOn ? beatLevel : null,
+    onPick: setBeatLevel,
+    extras: [{ label: "Off", selected: !beatOn, onClick: () => setBeatLevel(0) }],
   };
+  // each scene button picks that scene's audio reaction (and switches to it)
   const sceneProps = (key) => ({
-    onClick: () => setSceneKey(key),
-    "aria-label": scenes[key].label,
-    "aria-pressed": sceneKey === key,
-    title: scenes[key].label,
+    label: `${scenes[key].name} · Audio react`,
+    icon: <SceneIcon sceneKey={key} fallback={scenes[key].label} />,
+    lit: sceneKey === key,
+    level: reactLevels[key] ?? null,
+    onPick: (level) => setReactLevel(key, level),
+    extras: [
+      { label: `Show ${scenes[key].name}`, selected: sceneKey === key, onClick: () => setSceneKey(key) },
+      { label: "Off", selected: reactLevels[key] === 0, onClick: () => setReactLevel(key, 0) },
+    ],
   });
   const playProps = {
     onClick: playPause,
@@ -110,20 +119,16 @@ export default function TopBar({ sceneKey, setSceneKey, audio, playPause, playTr
           <SeekBar audio={audio} />
         </div>
         <div className="group hidden shrink-0 items-center gap-2 sm:flex">
-          <button {...diceProps} className={`${small} ${autoRandom ? active : idle}`}>
-            <DiceIcon />
-          </button>
+          <LevelMenu {...beatProps} buttonClass={(lit) => `${small} ${lit ? active : idle}`} />
           {sceneOrder.map((key) => (
-            <button key={key} {...sceneProps(key)} className={`${small} ${sceneKey === key ? active : idle}`}>
-              <SceneIcon sceneKey={key} fallback={scenes[key].label} />
-            </button>
+            <LevelMenu key={key} {...sceneProps(key)} buttonClass={(lit) => `${small} ${lit ? active : idle}`} />
           ))}
+          <button {...controlsProps} className={`${small} ${controlsOpen ? active : idle}`}>
+            <SlidersIcon />
+          </button>
           <TrackList audio={audio} playTrack={playTrack} buttonClass={(open) => `${small} ${open ? active : idle}`} />
           <button {...playProps} className={`${small} ${idle}`}>
             {isPlaying ? <PauseIcon /> : <PlayIcon />}
-          </button>
-          <button {...controlsProps} className={`${small} ${controlsOpen ? active : idle}`}>
-            <SlidersIcon />
           </button>
         </div>
         <a
@@ -143,13 +148,9 @@ export default function TopBar({ sceneKey, setSceneKey, audio, playPause, playTr
         </div>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center">
           <div className="flex items-center gap-2">
-            <button {...diceProps} className={`${dockBtn} ${autoRandom ? active : dockIdle}`}>
-              <DiceIcon />
-            </button>
+            <LevelMenu {...beatProps} dropUp alignLeft buttonClass={(lit) => `${dockBtn} ${lit ? active : dockIdle}`} />
             {sceneOrder.map((key) => (
-              <button key={key} {...sceneProps(key)} className={`${dockBtn} ${sceneKey === key ? active : dockIdle}`}>
-                <SceneIcon sceneKey={key} fallback={scenes[key].label} />
-              </button>
+              <LevelMenu key={key} {...sceneProps(key)} dropUp alignLeft buttonClass={(lit) => `${dockBtn} ${lit ? active : dockIdle}`} />
             ))}
           </div>
           <button
@@ -161,10 +162,10 @@ export default function TopBar({ sceneKey, setSceneKey, audio, playPause, playTr
             {isPlaying ? <PauseIcon /> : <PlayIcon />}
           </button>
           <div className="flex items-center justify-end gap-2">
-            <TrackList audio={audio} playTrack={playTrack} dropUp buttonClass={(open) => `${dockBtn} ${open ? active : dockIdle}`} />
             <button {...controlsProps} className={`${dockBtn} ${controlsOpen ? active : dockIdle}`}>
               <SlidersIcon />
             </button>
+            <TrackList audio={audio} playTrack={playTrack} dropUp buttonClass={(open) => `${dockBtn} ${open ? active : dockIdle}`} />
           </div>
         </div>
       </div>

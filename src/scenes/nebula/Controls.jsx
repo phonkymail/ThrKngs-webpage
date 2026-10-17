@@ -89,6 +89,7 @@ export default function NebulaControls({ params, setParam, applyPreset, randomiz
           <option value="radial-dots">Radial Dots</option>
           <option value="wave-ring">Wave Ring</option>
           <option value="mirror-bars">Mirror Bars</option>
+          <option value="logo">ThrKngs</option>
         </select>
         <div className="grid grid-cols-1 gap-y-2 w-32">
           <Slider label="Bars" value={params.spectralizerBars} min={12} max={120} step={1} onChange={(v) => setParam("spectralizerBars", v)} />

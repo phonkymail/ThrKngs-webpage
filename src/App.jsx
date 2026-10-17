@@ -9,7 +9,7 @@ import { useBeatRandomizer } from "./hooks/useBeatRandomizer";
 import { scenes, sceneOrder } from "./scenes";
 import { tracks } from "./lib/tracks";
 import { createDynamics } from "./lib/audioDynamics";
-import { defaultGlobal, sceneFilter } from "./lib/globalParams";
+import { defaultGlobal, sceneFilter, beatLevels, reactLevels } from "./lib/globalParams";
 import { SHORTCUTS } from "./lib/shortcuts";
 
 const IDLE_HIDE_MS = 3000;
@@ -30,10 +30,21 @@ export default function App() {
     return init;
   });
   const [global, setGlobalState] = useState(defaultGlobal);
+  // the Audio React level (1-5) picked per scene from its top-bar button;
+  // it holds through randomizes until a preset or the knob changes it
+  const [reactLevelByScene, setReactLevelByScene] = useState({});
   const [collapsed, setCollapsed] = useState(true);
   const audio = useAudioEngine();
 
   const setGlobal = useCallback((key, value) => setGlobalState((g) => ({ ...g, [key]: value })), []);
+  // Random on Beat dropdown: 0 turns it off, 1-5 turns it on at that level
+  const setBeatLevel = useCallback(
+    (level) =>
+      setGlobalState((g) =>
+        level ? { ...g, ...beatLevels[level], beatLevel: level, autoRandomize: true } : { ...g, autoRandomize: false }
+      ),
+    []
+  );
 
   // one shared, per-frame audio analysis for the visuals and the beat trigger
   const [processDynamics] = useState(createDynamics);
@@ -80,9 +91,17 @@ export default function App() {
   const setParam = useCallback(
     (key, value) => {
       setParamsByScene((prev) => ({ ...prev, [sceneKey]: { ...prev[sceneKey], [key]: value } }));
+      if (key === "audioReactivity") setReactLevelByScene((r) => ({ ...r, [sceneKey]: undefined }));
     },
     [sceneKey]
   );
+
+  // a scene button's dropdown: switch to that scene at the picked Audio React level
+  const setReactLevel = useCallback((key, level) => {
+    setSceneKey(key);
+    setReactLevelByScene((r) => ({ ...r, [key]: level }));
+    setParamsByScene((prev) => ({ ...prev, [key]: { ...prev[key], audioReactivity: reactLevels[level] } }));
+  }, []);
 
   const applyPreset = useCallback(
     (name) => {
@@ -90,6 +109,7 @@ export default function App() {
       if (!preset) return;
       const [rest, colors] = splitColors(preset);
       setParamsByScene((prev) => ({ ...prev, [sceneKey]: rest }));
+      setReactLevelByScene((r) => ({ ...r, [sceneKey]: undefined }));
       if (colors) setGlobalState((g) => ({ ...g, ...colors }));
     },
     [sceneKey]
@@ -98,9 +118,11 @@ export default function App() {
   const randomColors = global.randomColors;
   const randomize = useCallback(() => {
     const [rest, colors] = splitColors(scenes[sceneKey].randomizeParams());
+    const level = reactLevelByScene[sceneKey];
+    if (level !== undefined) rest.audioReactivity = reactLevels[level];
     setParamsByScene((prev) => ({ ...prev, [sceneKey]: { ...prev[sceneKey], ...rest } }));
     if (randomColors && colors) setGlobalState((g) => ({ ...g, ...colors }));
-  }, [sceneKey, randomColors]);
+  }, [sceneKey, randomColors, reactLevelByScene]);
 
   const { status, togglePlay } = audio;
   const playPause = useCallback(() => {
@@ -298,8 +320,11 @@ export default function App() {
           audio={audio}
           playPause={playPause}
           playTrack={playTrack}
-          autoRandom={global.autoRandomize}
-          setAutoRandom={(v) => setGlobal("autoRandomize", v)}
+          beatOn={global.autoRandomize}
+          beatLevel={global.beatLevel ?? 3}
+          setBeatLevel={setBeatLevel}
+          reactLevels={reactLevelByScene}
+          setReactLevel={setReactLevel}
           controlsOpen={!collapsed}
           toggleControls={() => setCollapsed((c) => !c)}
         />

@@ -3,6 +3,18 @@ import Slider from "../../components/Slider";
 import Toggle from "../../components/Toggle";
 import { presets } from "./presets";
 
+const motifShapes = [
+  ["crystal", "Crystal"],
+  ["triangle", "Triangle"],
+  ["circle", "Circle"],
+  ["square", "Square"],
+  ["diamond", "Diamond"],
+  ["star", "Star"],
+  ["hexagon", "Hexagon"],
+  ["logo", "ThrKngs"],
+  ["mixed", "Mixed"],
+];
+
 export default function KaleidoscopeControls({ params, setParam, applyPreset, randomize }) {
   return (
     <>
@@ -56,6 +68,20 @@ export default function KaleidoscopeControls({ params, setParam, applyPreset, ra
       {/* Symmetry + Presets */}
       <div className="flex flex-col gap-2">
         <Toggle label="Mirror" value={params.mirror} onChange={(v) => setParam("mirror", v)} />
+        <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-ember-300/80">
+          Motif Shape
+          <select
+            className="rounded border border-ember-900/60 bg-black/60 px-2 py-1 text-[10px] uppercase tracking-wider text-ember-200"
+            value={params.motifShape ?? "crystal"}
+            onChange={(e) => setParam("motifShape", e.target.value)}
+          >
+            {motifShapes.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
         <select
           className="rounded border border-ember-900/60 bg-black/60 px-2 py-1 text-[10px] uppercase tracking-wider text-ember-200"
           onChange={(e) => applyPreset(e.target.value)}

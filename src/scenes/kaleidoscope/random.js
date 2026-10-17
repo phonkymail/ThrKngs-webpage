@@ -1,4 +1,7 @@
 import { rand, randInt, hslToHex } from "../../lib/color";
+import { MOTIF_SHAPES } from "./engine";
+
+const shapeChoices = [...MOTIF_SHAPES, "mixed"];
 
 export function randomizeParams() {
   const hueA = rand(0, 360);
@@ -23,6 +26,7 @@ export function randomizeParams() {
     shapeCount: randInt(0, 6),
     arcCount: randInt(0, 6),
     motifCount: randInt(0, 7),
+    motifShape: shapeChoices[Math.floor(Math.random() * shapeChoices.length)],
     sparkleCount: randInt(0, 20),
     backgroundIntensity: rand(0, 0.1),
     backgroundSpeed: rand(0.05, 0.5),

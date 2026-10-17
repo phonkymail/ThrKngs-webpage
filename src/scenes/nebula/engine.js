@@ -7,6 +7,7 @@
 // - fast-moving stars leave streaks, so drops read as warp speed
 import { rand, lerpRgba } from "../../lib/color";
 import { motionDrive } from "../../lib/audioDynamics";
+import { LOGO_STROKES } from "../../lib/logo";
 
 function makeDrifter(w, h) {
   const x = rand(0, w);
@@ -515,6 +516,46 @@ export function createEngine() {
     }
   }
 
+  // the ThrKngs mark as glowing light-painting strokes that swell with the
+  // music, with flares at the stroke ends kicking on the beat
+  function drawLogo(ctx, params, cx, cy, baseR, levels) {
+    const op = params.spectralizerOpacity;
+    const overall = levels.overall || 0;
+    const punch = levels.punch || 0;
+    const r = baseR * 1.5;
+    const pt = ([x, y]) => [cx + x * r, cy + y * r];
+
+    // the mark itself, white-hot like the light trails on the cover
+    const core = lerpRgba(params.colorB, "#ffffff", 0.75, op * (0.7 + 0.3 * overall));
+    ctx.strokeStyle = core;
+    ctx.shadowColor = lerpRgba(params.colorA, params.colorB, 0.5, 1);
+    ctx.shadowBlur = (12 + 20 * overall) * params.glow * op;
+    ctx.lineWidth = Math.max(1.5, r * 0.035 * (1 + overall * 0.3));
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    for (const stroke of LOGO_STROKES) {
+      stroke.forEach((p, i) => {
+        const [x, y] = pt(p);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+    }
+    ctx.stroke();
+
+    // bright flares at the stroke ends, kicking with the beat
+    ctx.fillStyle = `rgba(255,255,255,${op * (0.8 + 0.2 * punch)})`;
+    const dot = r * 0.04 * (1 + punch * 1.2);
+    for (const stroke of LOGO_STROKES) {
+      for (const p of [stroke[0], stroke[stroke.length - 1]]) {
+        const [x, y] = pt(p);
+        ctx.beginPath();
+        ctx.arc(x, y, dot, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
   function drawSpectralizer(ctx, params, levels) {
     if (params.spectralizerStyle === "off") return;
     const bars = sampleBars(levels.spectrum, params.spectralizerBars);
@@ -532,6 +573,8 @@ export function createEngine() {
       drawWaveRing(ctx, params, bars, cx, cy, baseR, maxLen);
     } else if (params.spectralizerStyle === "mirror-bars") {
       drawMirrorBars(ctx, params, bars, cx, cy, baseR, maxLen);
+    } else if (params.spectralizerStyle === "logo") {
+      drawLogo(ctx, params, cx, cy, baseR, levels);
     } else {
       drawRadialBars(ctx, params, bars, cx, cy, baseR, maxLen);
     }

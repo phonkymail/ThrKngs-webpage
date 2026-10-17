@@ -7,6 +7,7 @@
 // wobbly and hand-drawn, sizes are uneven and wedges occasionally drop out.
 import { rand, rgba, lerpRgba } from "../../lib/color";
 import { motionDrive, applyShake, drawFlash } from "../../lib/audioDynamics";
+import { LOGO_STROKES } from "../../lib/logo";
 
 function clamp01(x) {
   return Math.max(0, Math.min(1, x));
@@ -56,10 +57,15 @@ function makeArc() {
   };
 }
 
-// a small crystal-like object: a few short arms, each with a mirrored pair of
-// barbs, so it is symmetric in itself before the wedge mirroring multiplies it
+// shapes a motif can take; "mixed" gives each motif its own
+export const MOTIF_SHAPES = ["crystal", "triangle", "circle", "square", "diamond", "star", "hexagon", "logo"];
+
+// a small object: by default crystal-like (a few short arms, each with a
+// mirrored pair of barbs), so it is symmetric in itself before the wedge
+// mirroring multiplies it
 function makeMotif() {
   return {
+    kind: MOTIF_SHAPES[Math.floor(Math.random() * MOTIF_SHAPES.length)],
     radiusFrac: rand(0.12, 0.9),
     angleFrac: rand(0.15, 0.85),
     driftSpeed: rand(0.05, 0.2),
@@ -111,6 +117,36 @@ function makeSegmentError() {
     mirrorScale: rand(-1, 1),
     seed: rand(0, 100),
   };
+}
+
+// closed polygon of n points around (x, y); radiusAt(k) scales point k
+function tracePolygon(ctx, x, y, r, n, rot, radiusAt) {
+  for (let k = 0; k <= n; k++) {
+    const a = rot + (k / n) * Math.PI * 2;
+    const rr = r * radiusAt(k % n);
+    const px = x + Math.cos(a) * rr;
+    const py = y + Math.sin(a) * rr;
+    if (k === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+}
+
+// the ThrKngs mark around (x, y), scaled by r and rotated by rot
+function traceLogo(ctx, x, y, r, rot, jit) {
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  let k = 0;
+  for (const stroke of LOGO_STROKES) {
+    stroke.forEach(([px, py], i) => {
+      const j = jit(k++);
+      const lx = px * r * j;
+      const ly = py * r * j;
+      const tx = x + lx * c - ly * s;
+      const ty = y + lx * s + ly * c;
+      if (i === 0) ctx.moveTo(tx, ty);
+      else ctx.lineTo(tx, ty);
+    });
+  }
 }
 
 // cheap smooth-ish noise in -1..1
@@ -448,23 +484,45 @@ export function createEngine() {
       ctx.lineWidth = Math.max(0.6, 1 + 1.5 * mid * react);
       ctx.beginPath();
       const rot = angle + time * m.spin;
-      for (let k = 0; k < m.arms; k++) {
-        const a = rot + (k / m.arms) * Math.PI * 2 + w * 0.08 * wonk(k + boil, m.seed);
-        const ca = Math.cos(a);
-        const sa = Math.sin(a);
-        const ex = x + ca * len;
-        const ey = y + sa * len;
-        ctx.moveTo(x, y);
-        ctx.lineTo(ex, ey);
-        // mirrored barbs either side of the arm
-        const bx = x + ca * len * m.barbPos;
-        const by = y + sa * len * m.barbPos;
-        const bl = len * m.barbLen;
-        for (const side of [1, -1]) {
-          const ba = a + m.barbAngle * side;
-          ctx.moveTo(bx, by);
-          ctx.lineTo(bx + Math.cos(ba) * bl, by + Math.sin(ba) * bl);
+      const shape = params.motifShape === "mixed" ? m.kind : params.motifShape ?? "crystal";
+      // per-vertex hand-drawn error, re-rolled a few times a second
+      const jit = (k) => 1 + w * 0.12 * wonk(k + boil, m.seed);
+      if (shape === "crystal") {
+        for (let k = 0; k < m.arms; k++) {
+          const a = rot + (k / m.arms) * Math.PI * 2 + w * 0.08 * wonk(k + boil, m.seed);
+          const ca = Math.cos(a);
+          const sa = Math.sin(a);
+          const ex = x + ca * len;
+          const ey = y + sa * len;
+          ctx.moveTo(x, y);
+          ctx.lineTo(ex, ey);
+          // mirrored barbs either side of the arm
+          const bx = x + ca * len * m.barbPos;
+          const by = y + sa * len * m.barbPos;
+          const bl = len * m.barbLen;
+          for (const side of [1, -1]) {
+            const ba = a + m.barbAngle * side;
+            ctx.moveTo(bx, by);
+            ctx.lineTo(bx + Math.cos(ba) * bl, by + Math.sin(ba) * bl);
+          }
         }
+      } else if (shape === "circle") {
+        // a ring with a smaller ring inside it
+        ctx.moveTo(x + len * jit(0), y);
+        ctx.arc(x, y, len * jit(0), 0, Math.PI * 2);
+        const inner = len * m.barbPos * jit(1);
+        ctx.moveTo(x + inner, y);
+        ctx.arc(x, y, inner, 0, Math.PI * 2);
+      } else if (shape === "star") {
+        tracePolygon(ctx, x, y, len, 10, rot, (k) => (k % 2 ? 0.45 : 1) * jit(k));
+      } else if (shape === "logo") {
+        traceLogo(ctx, x, y, len * 1.4, rot, jit);
+      } else {
+        const sides = { triangle: 3, square: 4, diamond: 4, hexagon: 6 }[shape] ?? 3;
+        // a diamond is a square on its point, stretched along one axis
+        const stretch = shape === "diamond" ? (k) => (k % 2 ? 0.6 : 1.1) * jit(k) : jit;
+        const turn = shape === "square" ? Math.PI / 4 : 0;
+        tracePolygon(ctx, x, y, len, sides, rot + turn, stretch);
       }
       ctx.stroke();
     }
