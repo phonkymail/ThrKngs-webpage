@@ -286,6 +286,7 @@ export default function App() {
         onClick={onScreenClick}
         speed={global.masterSpeed}
         paused={storeOpen}
+        modulation={global.autoRandomize ? global.modulation : 0}
         filter={sceneFilter(global)}
       />
       <Patina grain={global.grain} vignette={global.vignette} />

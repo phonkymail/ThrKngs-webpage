@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { scenes } from "../scenes";
+import { createModulator } from "../lib/modulation";
 
-export default function Visualizer({ sceneKey, params, getFrame, onClick, speed = 1, filter, paused = false }) {
+export default function Visualizer({ sceneKey, params, getFrame, onClick, speed = 1, filter, paused = false, modulation = 0 }) {
   const canvasRef = useRef(null);
   const engineRef = useRef(null);
   const paramsRef = useRef(params);
@@ -15,11 +16,15 @@ export default function Visualizer({ sceneKey, params, getFrame, onClick, speed 
   // skip drawing while hidden behind the store, but keep the loop alive
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
+  // how much Auto (Beat) wobbles the settings right now (0 = off)
+  const modulationRef = useRef(modulation);
+  modulationRef.current = modulation;
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     const engine = scenes[sceneKey].createEngine();
+    const modulate = createModulator();
     engineRef.current = engine;
 
     function resize() {
@@ -53,7 +58,7 @@ export default function Visualizer({ sceneKey, params, getFrame, onClick, speed 
         return;
       }
       const levels = getFrameRef.current(now);
-      const p = paramsRef.current;
+      const p = modulate(paramsRef.current, scenes[sceneKey].modulated, modulationRef.current, dt, levels.energy);
       engine.update(dt, p, levels);
       engine.draw(ctx, p, levels, dt);
 

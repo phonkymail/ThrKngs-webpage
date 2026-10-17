@@ -9,6 +9,8 @@ export const defaultGlobal = {
   autoRandomize: false,
   beatSensitivity: 1.6,
   beatGap: 4,
+  // how much Auto (Beat) also gently wobbles each scene's smooth settings
+  modulation: 0.5,
   autoScene: false,
   sceneInterval: 30,
 

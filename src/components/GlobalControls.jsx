@@ -54,6 +54,7 @@ export default function GlobalControls({ global, setGlobal, isFullscreen, toggle
         <div className="grid w-64 grid-cols-2 gap-x-6 gap-y-2">
           <Slider label="Sensitivity" value={global.beatSensitivity} min={1.1} max={3} onChange={set("beatSensitivity")} />
           <Slider label="Min Gap" value={global.beatGap} min={1} max={20} step={0.5} onChange={set("beatGap")} unit="s" />
+          <Slider label="Modulation" value={global.modulation} min={0} max={1} onChange={set("modulation")} />
           <Slider label="Scene Every" value={global.sceneInterval} min={10} max={180} step={5} onChange={set("sceneInterval")} unit="s" />
         </div>
       </Section>
