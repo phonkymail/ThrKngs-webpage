@@ -28,7 +28,7 @@ export default function ControlPanel({
   return (
     <div
       inert={collapsed}
-      className={`pointer-events-auto absolute bottom-0 left-0 right-0 z-50 border-t border-ember-500/30 max-h-[75dvh] overflow-y-auto bg-black/70 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md transition-transform ${
+      className={`pointer-events-auto absolute bottom-0 left-0 right-0 z-50 border-t border-ember-500/30 max-h-[75dvh] overflow-y-auto bg-transparent pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-transform ${
         collapsed ? "translate-y-full" : "translate-y-0"
       }`}
     >

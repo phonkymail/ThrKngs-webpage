@@ -9,7 +9,7 @@ export const defaultParams = {
   glow: 1.52,
   audioReactivity: 0.22,
   swirl: 0,
-  fold: 0.04,
+  fold: 0.16,
   spinMode: "ccw",
   layer2Count: 390,
   layer2Speed: 0.24,

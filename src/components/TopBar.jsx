@@ -91,11 +91,13 @@ export default function TopBar({ sceneKey, setSceneKey, audio, playPause, playTr
     "aria-label": controlsOpen ? "Hide controls" : "Show controls",
     title: controlsOpen ? "Hide controls" : "Show controls",
   };
+  // phone: the open control panel takes the screen, so the bar and dock step aside
+  const phoneHidden = controlsOpen ? "max-sm:pointer-events-none max-sm:opacity-0" : "";
   const small = "flex h-8 w-8 items-center justify-center rounded-full border sm:h-[26px] sm:w-[26px]";
 
   return (
     <>
-      <div className="absolute inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-50 flex items-center gap-x-4">
+      <div className={`absolute inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-50 flex items-center gap-x-4 transition-opacity duration-300 ${phoneHidden}`}>
         <div className="flex shrink-0 items-center gap-3">
           <h1 className="flex items-center gap-2 text-[10px] tracking-[0.3em] text-ember-100/70">
             <img src="/favicon-32.png" alt="" width="32" height="32" className="h-4 w-4 shrink-0 mix-blend-screen" />
@@ -135,7 +137,7 @@ export default function TopBar({ sceneKey, setSceneKey, audio, playPause, playTr
       </div>
 
       {/* phone: a player dock at the bottom, in thumb reach */}
-      <div className="absolute inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex flex-col gap-2 sm:hidden">
+      <div className={`absolute inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex flex-col gap-2 transition-opacity duration-300 sm:hidden ${phoneHidden}`}>
         <div className="flex">
           <SeekBar audio={audio} />
         </div>
