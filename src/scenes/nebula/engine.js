@@ -41,6 +41,37 @@ function smoothstep(a, b, x) {
 const MAX_WAVES = 6;
 const WAVE_BAND = 36;
 
+function pickDir() {
+  return Math.random() < 0.5 ? 1 : -1;
+}
+
+// "cw" / "ccw" pin the direction; "auto" (or unset) leaves it to the coin
+function dirFor(mode, coin) {
+  if (mode === "cw") return 1;
+  if (mode === "ccw") return -1;
+  return coin;
+}
+
+// a star of the second layer: fixed polar position on a disc covering the
+// whole screen, spun rigidly about the center by its own clock
+function makeOrbiter(w, h) {
+  const maxR = Math.hypot(w, h) / 2;
+  return {
+    r: Math.sqrt(Math.random()) * maxR,
+    theta: rand(0, Math.PI * 2),
+    size: rand(0.6, 1.7),
+    hue: Math.random(),
+    twinklePhase: rand(0, Math.PI * 2),
+    twinkleSpeed: rand(0.3, 1),
+    ox: 0,
+    oy: 0,
+    vx: 0,
+    vy: 0,
+    x: 0,
+    y: 0,
+  };
+}
+
 export function createEngine() {
   let width = 0;
   let height = 0;
@@ -48,12 +79,26 @@ export function createEngine() {
   let dust = [];
   let nodes = [];
   let waves = [];
+  // spin direction: a 50/50 coin flip per load, re-flipped every so often;
+  // `spinDir` eases toward the target so the galaxy slows, stops and reverses
+  let spinTarget = pickDir();
+  let spinDir = spinTarget;
+  let nextFlip = rand(20, 45);
+  let spin = 0;
+  let lastSpinSeed;
+  let orbiters = [];
+  // the second layer runs its own coin and its own randomly drifting speed
+  let l2Coin = pickDir();
+  let l2SpeedTarget = rand(0.3, 1);
+  let l2Vel = 0;
+  let l2NextRoll = rand(15, 35);
 
   function resize(w, h, params) {
     width = w;
     height = h;
     dust = new Array(params.dustCount).fill(0).map(() => makeDrifter(w, h));
     nodes = new Array(params.nodeCount).fill(0).map(() => ({ ...makeDrifter(w, h), size: rand(1.6, 3.2) }));
+    orbiters = new Array(params.layer2Count ?? 0).fill(0).map(() => makeOrbiter(w, h));
   }
 
   function setCount(arr, count, factory) {
@@ -86,7 +131,7 @@ export function createEngine() {
     const hx = d.x - cx;
     const hy = d.y - cy;
     const hr = Math.hypot(hx, hy);
-    if (swirl > 0 && hr < swirlR && hr > 1) {
+    if (swirl !== 0 && hr < swirlR && hr > 1) {
       const w = swirl * (1 - smoothstep(swirlR * 0.55, swirlR, hr)) * (0.35 + 0.65 * (1 - hr / swirlR)) * dt;
       const c = Math.cos(w);
       const s = Math.sin(w);
@@ -124,6 +169,23 @@ export function createEngine() {
     const react = params.audioReactivity;
     const drive = motionDrive(levels, react);
     time += (dt / 60) * drive;
+    nextFlip -= dt / 60;
+    // a randomize (by hand or on beat) re-flips the coin too
+    const seedChanged = params.spinSeed !== lastSpinSeed;
+    lastSpinSeed = params.spinSeed;
+    if (nextFlip <= 0 || seedChanged) {
+      spinTarget = pickDir();
+      nextFlip = rand(20, 45);
+    }
+    l2NextRoll -= dt / 60;
+    if (l2NextRoll <= 0 || seedChanged) {
+      l2Coin = pickDir();
+      l2SpeedTarget = rand(0.3, 1);
+      l2NextRoll = rand(15, 35);
+    }
+    const target = dirFor(params.spinMode, spinTarget);
+    spinDir += (target - spinDir) * Math.min(1, 0.008 * dt);
+    spin += (dt / 60) * drive * spinDir;
     const cx = width / 2;
     const cy = height / 2;
 
@@ -135,7 +197,7 @@ export function createEngine() {
     for (const wave of waves) wave.r += (7 + 12 * wave.strength) * dt;
     waves = waves.filter((wave) => wave.r < maxR + WAVE_BAND);
 
-    const swirl = (0.0015 + levels.energy * 0.012) * react * params.swirl;
+    const swirl = (0.0015 + levels.energy * 0.012) * react * params.swirl * spinDir;
     const swirlR = Math.min(width, height) * 0.5;
     if (params.dustCount !== dust.length) {
       setCount(dust, params.dustCount, () => makeDrifter(width, height));
@@ -145,6 +207,36 @@ export function createEngine() {
     }
     for (const d of dust) stepStar(d, dt, params.floatSpeed * drive, swirl, cx, cy, swirlR);
     for (const n of nodes) stepStar(n, dt, params.floatSpeed * drive, swirl, cx, cy, swirlR);
+
+    const l2Count = params.layer2Count ?? 0;
+    if (l2Count !== orbiters.length) setCount(orbiters, l2Count, () => makeOrbiter(width, height));
+    const l2Target = (params.layer2Speed ?? 0.5) * l2SpeedTarget * dirFor(params.layer2Mode, l2Coin) * 0.004;
+    l2Vel += (l2Target - l2Vel) * Math.min(1, 0.006 * dt);
+    for (const o of orbiters) stepOrbiter(o, dt, l2Vel * drive, cx, cy);
+  }
+
+  function stepOrbiter(o, dt, angVel, cx, cy) {
+    o.theta += angVel * dt;
+    const hx = cx + Math.cos(o.theta) * o.r;
+    const hy = cy + Math.sin(o.theta) * o.r;
+    // shockwaves shove this layer too, so it still feels part of the scene
+    const sx = hx + o.ox - cx;
+    const sy = hy + o.oy - cy;
+    const sr = Math.hypot(sx, sy) || 1;
+    for (const wave of waves) {
+      const diff = Math.abs(sr - wave.r);
+      if (diff < WAVE_BAND) {
+        const k = wave.strength * (1 - diff / WAVE_BAND) * 1.6 * dt;
+        o.vx += (sx / sr) * k;
+        o.vy += (sy / sr) * k;
+      }
+    }
+    o.vx = (o.vx - o.ox * 0.02 * dt) * Math.pow(0.9, dt);
+    o.vy = (o.vy - o.oy * 0.02 * dt) * Math.pow(0.9, dt);
+    o.ox += o.vx * dt;
+    o.oy += o.vy * dt;
+    o.x = hx + o.ox;
+    o.y = hy + o.oy;
   }
 
   function drawBackground(ctx) {
@@ -192,6 +284,18 @@ export function createEngine() {
       }
     }
     ctx.globalAlpha = 1;
+  }
+
+  function drawOrbiters(ctx, params) {
+    if (orbiters.length === 0) return;
+    const op = params.layer2Opacity ?? 0.6;
+    for (const o of orbiters) {
+      o.twinklePhase += 0.02 * o.twinkleSpeed;
+      ctx.fillStyle = lerpRgba(params.colorA, params.colorB, o.hue, op * (0.45 + 0.4 * Math.sin(o.twinklePhase)));
+      ctx.beginPath();
+      ctx.arc(o.x, o.y, o.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   function drawConstellation(ctx, params, levels) {
@@ -263,7 +367,7 @@ export function createEngine() {
 
   function drawRadialBars(ctx, params, bars, cx, cy, baseR, maxLen) {
     const op = params.spectralizerOpacity;
-    const rotation = time * 0.05;
+    const rotation = spin * 0.05;
     ctx.lineCap = "round";
     ctx.lineWidth = Math.max(1, (Math.PI * 2 * baseR) / bars.length / 3);
     for (let i = 0; i < bars.length; i++) {
@@ -288,7 +392,7 @@ export function createEngine() {
 
   function drawRadialDots(ctx, params, bars, cx, cy, baseR, maxLen) {
     const op = params.spectralizerOpacity;
-    const rotation = time * 0.03;
+    const rotation = spin * 0.03;
     for (let i = 0; i < bars.length; i++) {
       const avg = bars[i];
       const angle = (i / bars.length) * Math.PI * 2 - Math.PI / 2 + rotation;
@@ -309,7 +413,7 @@ export function createEngine() {
 
   function drawWaveRing(ctx, params, bars, cx, cy, baseR, maxLen) {
     const op = params.spectralizerOpacity;
-    const rotation = time * 0.04;
+    const rotation = spin * 0.04;
     ctx.beginPath();
     for (let i = 0; i <= bars.length; i++) {
       const avg = bars[i % bars.length];
@@ -410,6 +514,7 @@ export function createEngine() {
     drawBackground(ctx);
     drawVignette(ctx);
     drawWaves(ctx, params);
+    drawOrbiters(ctx, params);
     drawDust(ctx, params, levels);
     drawConstellation(ctx, params, levels);
     drawSpectralizer(ctx, params, levels);

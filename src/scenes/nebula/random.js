@@ -18,6 +18,11 @@ export function randomizeParams() {
     glow: rand(0.4, 2),
     audioReactivity: rand(0.5, 1.3),
     swirl: rand(0.3, 1.6),
+    // a fresh value tells the engine to re-flip its spin direction coin
+    spinSeed: Math.random(),
+    layer2Count: randInt(0, 40) * 10,
+    layer2Speed: rand(0.15, 1),
+    layer2Opacity: rand(0.3, 0.9),
     shockwave: rand(0.5, 1.5),
     streaks: rand(0.2, 1.2),
     spectralizerStyle: Math.random() < 0.9 ? SPECTRALIZER_STYLES[randInt(0, SPECTRALIZER_STYLES.length - 1)] : "off",

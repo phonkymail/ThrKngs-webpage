@@ -2,6 +2,34 @@ import Knob from "../../components/Knob";
 import Slider from "../../components/Slider";
 import { presets } from "./presets";
 
+const SPIN_MODES = [
+  ["auto", "Auto"],
+  ["cw", "CW"],
+  ["ccw", "CCW"],
+];
+
+// a tiny Auto / CW / CCW segmented switch
+function SpinMode({ label, value, onChange }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="text-[10px] uppercase tracking-wider text-ember-300/80">{label}</div>
+      <div className="flex overflow-hidden rounded border border-ember-900/60">
+        {SPIN_MODES.map(([mode, text]) => (
+          <button
+            key={mode}
+            onClick={() => onChange(mode)}
+            className={`px-2 py-1 text-[10px] uppercase tracking-wider ${
+              (value ?? "auto") === mode ? "bg-ember-500/25 text-ember-100" : "bg-black/60 text-ember-300/70 hover:bg-ember-500/10"
+            }`}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function NebulaControls({ params, setParam, applyPreset, randomize }) {
   return (
     <>
@@ -31,6 +59,19 @@ export default function NebulaControls({ params, setParam, applyPreset, randomiz
           onChange={(v) => setParam("audioReactivity", v)}
           accent="#ff2a06"
         />
+      </div>
+
+      <div className="hidden h-16 w-px bg-ember-500/20 sm:block" />
+
+      {/* Spin: master direction + the independent second layer */}
+      <div className="flex flex-col gap-2">
+        <SpinMode label="Spin" value={params.spinMode} onChange={(v) => setParam("spinMode", v)} />
+        <SpinMode label="Layer 2 Spin" value={params.layer2Mode} onChange={(v) => setParam("layer2Mode", v)} />
+        <div className="grid grid-cols-1 gap-y-2 w-32">
+          <Slider label="L2 Stars" value={params.layer2Count ?? 0} min={0} max={500} step={10} onChange={(v) => setParam("layer2Count", v)} />
+          <Slider label="L2 Speed" value={params.layer2Speed ?? 0.5} min={0} max={1} onChange={(v) => setParam("layer2Speed", v)} />
+          <Slider label="L2 Opacity" value={params.layer2Opacity ?? 0.6} min={0} max={1} onChange={(v) => setParam("layer2Opacity", v)} />
+        </div>
       </div>
 
       <div className="hidden h-16 w-px bg-ember-500/20 sm:block" />

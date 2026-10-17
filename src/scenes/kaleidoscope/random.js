@@ -20,6 +20,7 @@ export function randomizeParams() {
     chaos: rand(0, 0.7),
     shapeCount: randInt(0, 6),
     arcCount: randInt(0, 6),
+    motifCount: randInt(0, 7),
     sparkleCount: randInt(0, 20),
     backgroundIntensity: rand(0, 0.1),
     backgroundSpeed: rand(0.05, 0.5),

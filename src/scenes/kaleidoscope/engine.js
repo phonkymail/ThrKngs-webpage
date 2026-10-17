@@ -28,6 +28,8 @@ function makeParticle() {
     chaosSeed: rand(0, 100),
     sizeMul: rand(0.35, 1.9),
     bend: rand(-1, 1),
+    // the chain snaps here, so links form short clusters instead of one long zigzag
+    breakBefore: Math.random() < 0.35,
   };
 }
 
@@ -44,12 +46,32 @@ function makeShape() {
 function makeArc() {
   return {
     baseR: rand(0.15, 1),
-    spreadFrac: rand(0.15, 0.5),
+    // about half the arcs are short ticks, which mirror into small brackets
+    spreadFrac: Math.random() < 0.5 ? rand(0.03, 0.1) : rand(0.15, 0.5),
     centerFrac: rand(0, 1),
     driftSpeed: rand(0.02, 0.15) * (Math.random() < 0.5 ? 1 : -1),
     hueOffset: rand(0, 1),
     seed: rand(0, 100),
     widthErr: rand(-0.6, 1.6),
+  };
+}
+
+// a small crystal-like object: a few short arms, each with a mirrored pair of
+// barbs, so it is symmetric in itself before the wedge mirroring multiplies it
+function makeMotif() {
+  return {
+    radiusFrac: rand(0.12, 0.9),
+    angleFrac: rand(0.15, 0.85),
+    driftSpeed: rand(0.05, 0.2),
+    driftPhase: rand(0, Math.PI * 2),
+    arms: 2 + Math.floor(Math.random() * 4),
+    size: rand(0.025, 0.07),
+    barbPos: rand(0.35, 0.75),
+    barbLen: rand(0.25, 0.55),
+    barbAngle: rand(0.4, 1.1),
+    spin: rand(0.1, 0.4) * (Math.random() < 0.5 ? 1 : -1),
+    hueOffset: rand(0, 1),
+    seed: rand(0, 100),
   };
 }
 
@@ -129,6 +151,7 @@ export function createEngine() {
   let shapes = [];
   let arcs = [];
   let sparkles = [];
+  let motifs = [];
   let bgBlobs = [];
   const segErrors = new Array(20).fill(0).map(() => makeSegmentError());
   const spriteCache = { hexA: null, hexB: null, spriteA: null, spriteB: null };
@@ -151,6 +174,7 @@ export function createEngine() {
     shapes = new Array(params.shapeCount).fill(0).map(() => makeShape());
     arcs = new Array(params.arcCount).fill(0).map(() => makeArc());
     sparkles = new Array(params.sparkleCount).fill(0).map(() => makeSparkle());
+    motifs = new Array(params.motifCount ?? 4).fill(0).map(() => makeMotif());
     bgBlobs = [makeBgBlob("A"), makeBgBlob("A"), makeBgBlob("B"), makeBgBlob("B")];
   }
 
@@ -161,6 +185,8 @@ export function createEngine() {
     if (params.shapeCount !== shapes.length) syncArray(shapes, params.shapeCount, makeShape);
     if (params.arcCount !== arcs.length) syncArray(arcs, params.arcCount, makeArc);
     if (params.sparkleCount !== sparkles.length) syncArray(sparkles, params.sparkleCount, makeSparkle);
+    const motifCount = params.motifCount ?? 4;
+    if (motifCount !== motifs.length) syncArray(motifs, motifCount, makeMotif);
   }
 
   function drawBackgroundWash(ctx, params, levels, cx, cy) {
@@ -300,7 +326,7 @@ export function createEngine() {
       ctx.arc(x, y, size * 0.6, 0, Math.PI * 2);
       ctx.fill();
 
-      if (havePrev) {
+      if (havePrev && !p.breakBefore) {
         ctx.strokeStyle = lerpRgba(params.colorA, params.colorB, localMix, 0.25 * Math.min(1, params.glow));
         ctx.lineWidth = 1;
         // links sag/bow instead of running dead straight
@@ -345,8 +371,51 @@ export function createEngine() {
     }
   }
 
+  function drawMotifs(ctx, params, levels, halfWedge, maxRadius) {
+    const mid = levels.mid || 0;
+    const react = params.audioReactivity;
+    const w = params.wrongness;
+    const boil = Math.floor(time * 6);
+    ctx.lineCap = "round";
+    for (let i = 0; i < motifs.length; i++) {
+      const m = motifs[i];
+      const drift = Math.sin(time * m.driftSpeed + m.driftPhase);
+      const angle = clamp01(m.angleFrac + drift * 0.12) * halfWedge;
+      const radius = clamp01(m.radiusFrac + drift * 0.05) * maxRadius;
+      const x = radius * Math.cos(angle);
+      const y = radius * Math.sin(angle);
+      const len = maxRadius * m.size * (1 + mid * react * 0.5);
+      const mixT = clamp01(0.5 + 0.5 * Math.sin(time * params.hueSpeed * 1.5 + m.hueOffset * Math.PI * 2));
+
+      ctx.strokeStyle = lerpRgba(params.colorA, params.colorB, mixT, 0.3 + 0.4 * mid * react);
+      ctx.lineWidth = Math.max(0.6, 1 + 1.5 * mid * react);
+      ctx.beginPath();
+      const rot = angle + time * m.spin;
+      for (let k = 0; k < m.arms; k++) {
+        const a = rot + (k / m.arms) * Math.PI * 2 + w * 0.08 * wonk(k + boil, m.seed);
+        const ca = Math.cos(a);
+        const sa = Math.sin(a);
+        const ex = x + ca * len;
+        const ey = y + sa * len;
+        ctx.moveTo(x, y);
+        ctx.lineTo(ex, ey);
+        // mirrored barbs either side of the arm
+        const bx = x + ca * len * m.barbPos;
+        const by = y + sa * len * m.barbPos;
+        const bl = len * m.barbLen;
+        for (const side of [1, -1]) {
+          const ba = a + m.barbAngle * side;
+          ctx.moveTo(bx, by);
+          ctx.lineTo(bx + Math.cos(ba) * bl, by + Math.sin(ba) * bl);
+        }
+      }
+      ctx.stroke();
+    }
+  }
+
   function drawWedgeContent(ctx, params, levels, halfWedge, maxRadius, sprites) {
     drawArcs(ctx, params, levels, halfWedge, maxRadius);
+    drawMotifs(ctx, params, levels, halfWedge, maxRadius);
     drawShapes(ctx, params, levels, halfWedge, maxRadius);
     drawSparkles(ctx, params, levels, halfWedge, maxRadius);
     drawParticleChain(ctx, params, levels, halfWedge, maxRadius, sprites);

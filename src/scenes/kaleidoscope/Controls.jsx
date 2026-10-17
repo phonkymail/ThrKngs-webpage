@@ -32,6 +32,7 @@ export default function KaleidoscopeControls({ params, setParam, applyPreset, ra
         <Slider label="Particles" value={params.particlesPerWedge} min={0} max={14} step={1} onChange={(v) => setParam("particlesPerWedge", v)} />
         <Slider label="Shapes" value={params.shapeCount} min={0} max={8} step={1} onChange={(v) => setParam("shapeCount", v)} />
         <Slider label="Arcs" value={params.arcCount} min={0} max={8} step={1} onChange={(v) => setParam("arcCount", v)} />
+        <Slider label="Motifs" value={params.motifCount ?? 4} min={0} max={10} step={1} onChange={(v) => setParam("motifCount", v)} />
         <Slider label="Sparkles" value={params.sparkleCount} min={0} max={30} step={1} onChange={(v) => setParam("sparkleCount", v)} />
         <Slider label="Particle Size" value={params.particleSize} min={0.3} max={3} onChange={(v) => setParam("particleSize", v)} />
         <Slider label="Trail Fade" value={params.trailFade} min={0.02} max={0.6} onChange={(v) => setParam("trailFade", v)} />
