@@ -8,10 +8,15 @@
 // - punch: bass onset (spectral flux spike) that decays quickly
 // - onset: this frame's flux relative to its running average (0 if no hit),
 //   for anything that wants to trigger on beats
+// In "highs" mode the bands and onsets come from the high-mid and high end
+// instead (bass-heavy mixes otherwise make every kick drive the visuals):
+// bass -> 1.5-4kHz, mid -> 4-8kHz, treble -> 8-14kHz, onsets from 1.5-8kHz.
 import { rgba } from "./color";
 
 const BANDS = ["bass", "mid", "treble", "overall"];
-const FLUX_BINS = 12; // ~0-500Hz at fftSize 1024 / 44.1kHz
+// bin ranges at fftSize 1024 / 44.1kHz (~43Hz per bin)
+const FLUX_RANGE = { full: [0, 12], highs: [35, 186] }; // ~0-500Hz / ~1.5-8kHz
+const HIGH_BANDS = { bass: [35, 93], mid: [93, 186], treble: [186, 325] };
 const ONSET_RATIO = 2.5; // ~1-2 hits/s on kick-driven music
 const MIN_ONSET_GAP_MS = 150;
 
@@ -38,8 +43,9 @@ function normalize(range, v, dt) {
 
 export function createDynamics() {
   const ranges = Object.fromEntries(BANDS.map((b) => [b, makeRange()]));
-  const prevBins = new Float32Array(FLUX_BINS);
+  const prevBins = new Float32Array(512);
   let havePrev = false;
+  let lastMode = null;
   let fluxAvg = 0.01;
   let lastOnsetAt = -Infinity;
   let loudSlow = 0;
@@ -52,12 +58,30 @@ export function createDynamics() {
   // Called by every per-frame consumer; rAF callbacks in the same frame share
   // a timestamp, so the second caller gets the cached result instead of
   // advancing the envelopes twice.
-  return function process(getLevels, now) {
+  function bandAvg(spectrum, [a, b]) {
+    let sum = 0;
+    const end = Math.min(b, spectrum.length);
+    for (let k = a; k < end; k++) sum += spectrum[k];
+    return end > a ? sum / (end - a) / 255 : 0;
+  }
+
+  return function process(getLevels, now, mode = "full") {
     if (now === lastNow && last) return last;
     const dt = lastNow === null ? 1 : Math.min(3, (now - lastNow) / (1000 / 60));
     lastNow = now;
 
-    const raw = getLevels();
+    let raw = getLevels();
+    if (mode === "highs" && raw.spectrum) {
+      const bass = bandAvg(raw.spectrum, HIGH_BANDS.bass);
+      const mid = bandAvg(raw.spectrum, HIGH_BANDS.mid);
+      const treble = bandAvg(raw.spectrum, HIGH_BANDS.treble);
+      raw = { bass, mid, treble, overall: (bass + mid + treble) / 3, spectrum: raw.spectrum };
+    }
+    // switching modes compares different bins, so restart the onset tracking
+    if (mode !== lastMode) {
+      lastMode = mode;
+      havePrev = false;
+    }
     const out = { spectrum: raw.spectrum, onset: 0 };
 
     for (const band of BANDS) {
@@ -75,12 +99,13 @@ export function createDynamics() {
 
     const spectrum = raw.spectrum;
     if (spectrum) {
+      const [f0, f1] = FLUX_RANGE[mode] ?? FLUX_RANGE.full;
       let flux = 0;
-      for (let k = 0; k < FLUX_BINS; k++) {
+      for (let k = f0; k < f1; k++) {
         if (havePrev) flux += Math.max(0, spectrum[k] - prevBins[k]);
         prevBins[k] = spectrum[k];
       }
-      flux /= FLUX_BINS * 255;
+      flux /= (f1 - f0) * 255;
       if (havePrev) {
         const ratio = flux / (fluxAvg + 0.002);
         if (ratio > ONSET_RATIO && now - lastOnsetAt > MIN_ONSET_GAP_MS) {

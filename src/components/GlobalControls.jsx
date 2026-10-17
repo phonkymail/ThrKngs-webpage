@@ -61,6 +61,11 @@ export default function GlobalControls({ global, setGlobal, isFullscreen, toggle
       <Divider />
 
       <Section title="Reaction">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-ember-300/60">React to</span>
+          <Toggle label="Highs" value={global.reactBand === "highs"} onChange={() => setGlobal("reactBand", "highs")} />
+          <Toggle label="Full" value={global.reactBand !== "highs"} onChange={() => setGlobal("reactBand", "full")} />
+        </div>
         <div className="flex gap-4">
           <Knob label="React" value={global.masterReact} min={0} max={2} onChange={set("masterReact")} accent="#ff2a06" />
           <Knob label="Speed" value={global.masterSpeed} min={0} max={2} onChange={set("masterSpeed")} accent="#ff6a3d" />

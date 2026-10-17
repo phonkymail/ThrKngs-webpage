@@ -82,7 +82,7 @@ export function useAudioEngine() {
   }, [ensureContext, disconnectSource]);
 
   const playFromUrl = useCallback(
-    (url, name) => {
+    (url, name, startAt = 0) => {
       setError("");
       const ctx = ensureContext();
       ctx.resume();
@@ -91,7 +91,13 @@ export function useAudioEngine() {
       // origin (R2), and without CORS the analyser would only read silence
       const audioEl = new Audio();
       audioEl.crossOrigin = "anonymous";
-      audioEl.loop = true;
+      // the album plays through once and stops at the end
+      audioEl.addEventListener("ended", () => {
+        if (audioElRef.current === audioEl) setPlaying(false);
+      });
+      if (startAt > 0) {
+        audioEl.addEventListener("loadedmetadata", () => (audioEl.currentTime = startAt), { once: true });
+      }
       audioEl.src = url;
       audioElRef.current = audioEl;
       const source = ctx.createMediaElementSource(audioEl);
@@ -139,8 +145,8 @@ export function useAudioEngine() {
   );
 
   const loadUrl = useCallback(
-    (url, name) => {
-      playFromUrl(url, name ?? decodeURIComponent(url.split("/").pop()));
+    (url, name, startAt) => {
+      playFromUrl(url, name ?? decodeURIComponent(url.split("/").pop()), startAt);
     },
     [playFromUrl]
   );
@@ -186,6 +192,18 @@ export function useAudioEngine() {
     if (el && Number.isFinite(el.duration)) el.currentTime = Math.max(0, Math.min(el.duration, seconds));
   }, []);
 
+  // jump to a point and make sure it's playing (picking a track from the list)
+  const playAt = useCallback((seconds) => {
+    const el = audioElRef.current;
+    if (!el) return;
+    el.currentTime = Number.isFinite(el.duration) ? Math.max(0, Math.min(el.duration, seconds)) : Math.max(0, seconds);
+    if (el.paused) {
+      el.play()
+        .then(() => setPlaying(true))
+        .catch(() => setError("Could not play track."));
+    }
+  }, []);
+
   // Returns { bass, mid, treble, overall, spectrum } — spectrum is the raw
   // frequency-bin array (0..255 per bin), reused in place each call.
   const getLevels = useCallback(() => {
@@ -228,6 +246,7 @@ export function useAudioEngine() {
     getLevels,
     getPosition,
     seek,
+    playAt,
     setVolume,
   };
 }

@@ -35,7 +35,7 @@ export default function SeekBar({ audio }) {
   }, [getPosition]);
 
   // keep the slot so the top bar layout doesn't jump when a track loads
-  if (audio.status !== "file" || pos.duration <= 0) return <div className="order-last min-w-0 basis-full sm:order-none sm:basis-auto sm:flex-1" />;
+  if (audio.status !== "file" || pos.duration <= 0) return <div className="min-w-0 flex-1" />;
 
   function fracAt(e) {
     const rect = barRef.current.getBoundingClientRect();
@@ -61,7 +61,7 @@ export default function SeekBar({ audio }) {
   const shownTime = dragFrac !== null ? dragFrac * pos.duration : pos.current;
 
   return (
-    <div className="group order-last flex min-w-0 basis-full items-center gap-3 sm:order-none sm:basis-auto sm:flex-1 text-[9px] tabular-nums tracking-wider text-white/30 transition-colors hover:text-ember-100/80">
+    <div className="group flex min-w-0 flex-1 items-center gap-3 text-[9px] tabular-nums tracking-wider text-white/30 pointer-coarse:text-white/50 transition-colors hover:text-ember-100/80">
       <span className="shrink-0">{formatTime(shownTime)}</span>
       <div
         ref={barRef}

@@ -19,7 +19,7 @@ function SpinMode({ label, value, onChange }) {
             key={mode}
             onClick={() => onChange(mode)}
             className={`px-2 py-1 text-[10px] uppercase tracking-wider ${
-              (value ?? "auto") === mode ? "bg-ember-500/25 text-ember-100" : "bg-black/60 text-ember-300/70 hover:bg-ember-500/10"
+              (value ?? "auto") === mode ? "bg-ember-500/15 text-ember-500 shadow-[inset_0_0_8px_rgba(255,42,6,0.5)] drop-shadow-[0_0_4px_rgba(255,42,6,0.6)]" : "bg-black/60 text-ember-300/70 hover:bg-ember-500/10"
             }`}
           >
             {text}

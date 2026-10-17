@@ -4,7 +4,7 @@ import GlobalControls from "./GlobalControls";
 import { SceneIcon } from "./SceneIcons";
 
 const tabBase = "rounded border px-3 py-1 text-[10px] uppercase tracking-[0.2em] transition-colors";
-const tabActive = "border-ember-400 bg-ember-500/20 text-ember-100 shadow-[0_0_8px_rgba(255,42,6,0.6)]";
+const tabActive = "border-ember-500 bg-ember-500/15 text-ember-500 shadow-[0_0_8px_rgba(255,42,6,0.6)]";
 const tabIdle = "border-ember-900/60 text-ember-400/60 hover:border-ember-500";
 
 export default function ControlPanel({

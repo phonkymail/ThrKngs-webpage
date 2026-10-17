@@ -38,7 +38,14 @@ export default function App() {
   // one shared, per-frame audio analysis for the visuals and the beat trigger
   const [processDynamics] = useState(createDynamics);
   const { getLevels } = audio;
-  const getFrame = useCallback((now) => processDynamics(getLevels, now), [processDynamics, getLevels]);
+  const reactBandRef = useRef(defaultGlobal.reactBand);
+  useEffect(() => {
+    reactBandRef.current = global.reactBand;
+  }, [global.reactBand]);
+  const getFrame = useCallback(
+    (now) => processDynamics(getLevels, now, reactBandRef.current),
+    [processDynamics, getLevels]
+  );
 
   // scene params as the controls see them: merged over defaults so a param
   // added later (or missing from a preset) never arrives undefined
@@ -100,6 +107,17 @@ export default function App() {
     if (status === "file") togglePlay();
     else if (tracks.length > 0) loadUrl(encodeURI(tracks[0].url), tracks[0].name);
   }, [status, togglePlay, loadUrl]);
+
+  // picking a song from the tracklist: jump there, loading the album first
+  // if nothing is loaded yet
+  const { playAt } = audio;
+  const playTrack = useCallback(
+    (start) => {
+      if (status === "file") playAt(start);
+      else if (tracks.length > 0) loadUrl(encodeURI(tracks[0].url), tracks[0].name, start);
+    },
+    [status, playAt, loadUrl]
+  );
 
   // a beat either switches scene (when Auto Scene is due) or randomizes
   const lastSceneSwitchRef = useRef(null);
@@ -278,6 +296,7 @@ export default function App() {
           setSceneKey={setSceneKey}
           audio={audio}
           playPause={playPause}
+          playTrack={playTrack}
           autoRandom={global.autoRandomize}
           setAutoRandom={(v) => setGlobal("autoRandomize", v)}
           controlsOpen={!collapsed}
@@ -286,7 +305,7 @@ export default function App() {
       </div>
 
       <div
-        className={`pointer-events-none absolute inset-x-0 bottom-[max(2.5rem,env(safe-area-inset-bottom))] z-40 flex flex-col items-center gap-3 px-4 text-center transition-opacity duration-1000 ${
+        className={`pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 px-4 text-center transition-opacity duration-1000 ${
           showGuide && collapsed ? "opacity-100" : "opacity-0"
         }`}
         aria-hidden={!showGuide}

@@ -12,6 +12,10 @@ export const defaultGlobal = {
   autoScene: false,
   sceneInterval: 30,
 
+  // which part of the spectrum drives the visuals: "highs" (high-mid and
+  // up, so the heavy bass doesn't trigger everything) or "full"
+  reactBand: "highs",
+
   // master multipliers on top of each scene's own settings
   masterReact: 1,
   masterSpeed: 1,
