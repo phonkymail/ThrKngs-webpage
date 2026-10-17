@@ -9,6 +9,7 @@ export default function KaleidoscopeControls({ params, setParam, applyPreset, ra
       {/* Knobs */}
       <div className="flex flex-wrap gap-4">
         <Knob label="Rotation" value={params.rotationSpeed} min={-1} max={1} onChange={(v) => setParam("rotationSpeed", v)} accent="#ff2a06" />
+        <Knob label="Fold" value={params.fold ?? 0} min={-1} max={1} onChange={(v) => setParam("fold", v)} accent="#ff5c3d" />
         <Knob label="Glow" value={params.glow} min={0} max={2.5} onChange={(v) => setParam("glow", v)} accent="#ff9466" />
         <Knob label="Hue Speed" value={params.hueSpeed} min={0} max={1} onChange={(v) => setParam("hueSpeed", v)} accent="#ff6a3d" />
         <Knob label="Wobble" value={params.wobble} min={0} max={1} onChange={(v) => setParam("wobble", v)} accent="#ffb38a" />
@@ -33,6 +34,7 @@ export default function KaleidoscopeControls({ params, setParam, applyPreset, ra
         <Slider label="Shapes" value={params.shapeCount} min={0} max={8} step={1} onChange={(v) => setParam("shapeCount", v)} />
         <Slider label="Arcs" value={params.arcCount} min={0} max={8} step={1} onChange={(v) => setParam("arcCount", v)} />
         <Slider label="Motifs" value={params.motifCount ?? 4} min={0} max={10} step={1} onChange={(v) => setParam("motifCount", v)} />
+        <Slider label="Warp Lines" value={params.streakCount ?? 6} min={0} max={20} step={1} onChange={(v) => setParam("streakCount", v)} />
         <Slider label="Sparkles" value={params.sparkleCount} min={0} max={30} step={1} onChange={(v) => setParam("sparkleCount", v)} />
         <Slider label="Particle Size" value={params.particleSize} min={0.3} max={3} onChange={(v) => setParam("particleSize", v)} />
         <Slider label="Trail Fade" value={params.trailFade} min={0.02} max={0.6} onChange={(v) => setParam("trailFade", v)} />

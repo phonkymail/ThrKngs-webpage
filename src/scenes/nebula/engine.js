@@ -87,6 +87,8 @@ export function createEngine() {
   let spin = 0;
   let lastSpinSeed;
   let orbiters = [];
+  // fold travel (tunnel flight), eased toward the Fold knob; >0 flies outward
+  let foldVel = 0;
   // the second layer runs its own coin and its own randomly drifting speed
   let l2Coin = pickDir();
   let l2SpeedTarget = rand(0.3, 1);
@@ -117,14 +119,53 @@ export function createEngine() {
     d.y += Math.sin(d.angle) * v * dt * 0.6;
 
     const margin = 40;
+    const off = d.x < -margin || d.x > width + margin || d.y < -margin || d.y > height + margin;
+    // flying outward, a star leaving the screen is reborn near the center
+    if (off && foldVel > 0.0005) {
+      respawnCenter(d);
+      return;
+    }
     if (d.x < -margin) d.x = width + margin;
     if (d.x > width + margin) d.x = -margin;
     if (d.y < -margin) d.y = height + margin;
     if (d.y > height + margin) d.y = -margin;
   }
 
+  function respawnCenter(d) {
+    const a = rand(0, Math.PI * 2);
+    const r = rand(0.02, 0.2) * Math.min(width, height);
+    d.x = width / 2 + Math.cos(a) * r;
+    d.y = height / 2 + Math.sin(a) * r;
+    d.respawned = true;
+  }
+
+  // somewhere just inside the screen border, for stars falling inward
+  function respawnEdge(d) {
+    const t = Math.random() * 2 * (width + height);
+    if (t < width) [d.x, d.y] = [t, 0];
+    else if (t < width * 2) [d.x, d.y] = [t - width, height];
+    else if (t < width * 2 + height) [d.x, d.y] = [0, t - width * 2];
+    else [d.x, d.y] = [width, t - width * 2 - height];
+    d.respawned = true;
+  }
+
+  // tunnel flight: move the home position radially, faster the further out,
+  // so stars creep away from the center and rush past the edge
+  function stepFold(d, dt, cx, cy) {
+    if (Math.abs(foldVel) < 0.00005) return;
+    const hx = d.x - cx;
+    const hy = d.y - cy;
+    const hr = Math.hypot(hx, hy) || 1;
+    const minR = Math.min(width, height) * 0.03;
+    const step = foldVel * (hr + minR) * dt;
+    d.x += (hx / hr) * step;
+    d.y += (hy / hr) * step;
+    if (foldVel < 0 && hr < minR) respawnEdge(d);
+  }
+
   function stepStar(d, dt, floatSpeed, swirl, cx, cy, swirlR) {
     stepDrifter(d, dt, floatSpeed);
+    stepFold(d, dt, cx, cy);
 
     // galaxy swirl: rotate the home position about the center, faster inside,
     // fading out before the screen edge so nothing gets flung across the wrap
@@ -162,6 +203,12 @@ export function createEngine() {
     d.py = d.ry;
     d.rx = d.x + d.ox;
     d.ry = d.y + d.oy;
+    // no streak across the jump back to the center/edge
+    if (d.respawned) {
+      d.px = d.rx;
+      d.py = d.ry;
+      d.respawned = false;
+    }
   }
 
   function update(dt, params, levels) {
@@ -197,6 +244,11 @@ export function createEngine() {
     for (const wave of waves) wave.r += (7 + 12 * wave.strength) * dt;
     waves = waves.filter((wave) => wave.r < maxR + WAVE_BAND);
 
+    const fold = params.fold ?? 0;
+    // a kick gives the flight a little jump to light speed
+    const foldTarget = (fold * 0.012 + Math.sign(fold) * levels.punch * 0.01 * react) * drive;
+    foldVel += (foldTarget - foldVel) * Math.min(1, 0.05 * dt);
+
     const swirl = (0.0015 + levels.energy * 0.012) * react * params.swirl * spinDir;
     const swirlR = Math.min(width, height) * 0.5;
     if (params.dustCount !== dust.length) {
@@ -217,6 +269,13 @@ export function createEngine() {
 
   function stepOrbiter(o, dt, angVel, cx, cy) {
     o.theta += angVel * dt;
+    if (Math.abs(foldVel) >= 0.00005) {
+      const maxR = Math.hypot(width, height) / 2;
+      const minR = Math.min(width, height) * 0.03;
+      o.r += foldVel * (o.r + minR) * dt;
+      if (o.r > maxR) o.r = rand(0.02, 0.2) * Math.min(width, height);
+      else if (o.r < minR) o.r = maxR * rand(0.85, 1);
+    }
     const hx = cx + Math.cos(o.theta) * o.r;
     const hy = cy + Math.sin(o.theta) * o.r;
     // shockwaves shove this layer too, so it still feels part of the scene

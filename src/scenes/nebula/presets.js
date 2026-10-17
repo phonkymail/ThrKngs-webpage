@@ -1,5 +1,32 @@
 // the look the page opens with (no colors: those come from the global settings)
 export const defaultParams = {
+  dustCount: 570,
+  nodeCount: 52,
+  floatSpeed: 0.31,
+  twinkle: 0.45,
+  linkDistance: 204,
+  linkOpacity: 0.38,
+  glow: 1.52,
+  audioReactivity: 0.46,
+  swirl: 0,
+  fold: 0.04,
+  spinMode: "ccw",
+  layer2Count: 390,
+  layer2Speed: 0.24,
+  layer2Mode: "cw",
+  layer2Opacity: 0.28,
+  shockwave: 0.03,
+  streaks: 0.44,
+  spectralizerStyle: "radial-bars",
+  spectralizerBars: 120,
+  spectralizerSize: 0.04,
+  spectralizerSensitivity: 1.52,
+  spectralizerOpacity: 0.46,
+};
+
+// the previous startup look; the other presets build on it, not on the
+// startup look above, so they keep their own character
+const classic = {
   dustCount: 520,
   nodeCount: 82,
   floatSpeed: 0.6,
@@ -9,6 +36,7 @@ export const defaultParams = {
   glow: 0.86,
   audioReactivity: 0.98,
   swirl: 0.29,
+  fold: 0,
   spinMode: "auto",
   layer2Count: 220,
   layer2Speed: 0.5,
@@ -26,7 +54,7 @@ export const defaultParams = {
 export const presets = {
   ThrKngs: defaultParams,
   "Nebula Rose": {
-    ...defaultParams,
+    ...classic,
     colorA: "#4b5bcf",
     colorB: "#c94b8f",
     dustCount: 260,
@@ -47,27 +75,27 @@ export const presets = {
     spectralizerOpacity: 0.45,
   },
   "Deep Indigo": {
-    ...defaultParams,
+    ...classic,
     colorA: "#1c2a6e",
     colorB: "#4b2a7a",
     floatSpeed: 0.18,
     linkDistance: 110,
   },
   "Emerald Mist": {
-    ...defaultParams,
+    ...classic,
     colorA: "#0f6e5c",
     colorB: "#1c3a6e",
     nodeCount: 35,
   },
   "Solar Dust": {
-    ...defaultParams,
+    ...classic,
     colorA: "#7a3a1c",
     colorB: "#cf6a2f",
     dustCount: 380,
     twinkle: 0.8,
   },
   "Mono Ink": {
-    ...defaultParams,
+    ...classic,
     colorA: "#2a2a2e",
     colorB: "#45454a",
     linkOpacity: 0.7,

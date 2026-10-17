@@ -18,6 +18,7 @@ export function randomizeParams() {
     glow: rand(0.4, 2),
     audioReactivity: rand(0.5, 1.3),
     swirl: rand(0.3, 1.6),
+    fold: Math.random() < 0.3 ? 0 : rand(-0.6, 0.9),
     // a fresh value tells the engine to re-flip its spin direction coin
     spinSeed: Math.random(),
     layer2Count: randInt(0, 40) * 10,

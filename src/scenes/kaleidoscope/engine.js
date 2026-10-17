@@ -75,6 +75,31 @@ function makeMotif() {
   };
 }
 
+// a radial light-speed streak, flowing along the fold
+function makeStreak() {
+  return {
+    angleFrac: rand(0.05, 0.95),
+    u: Math.random(),
+    len: rand(0.04, 0.14),
+    speed: rand(0.7, 1.4),
+    hueOffset: rand(0, 1),
+  };
+}
+
+// fold/tunnel mapping: radius fraction <-> "depth" u, exponential so things
+// creep near the center and rush past the edge, like flying down a tunnel
+const FOLD_K = 2.5;
+const FOLD_E = Math.exp(FOLD_K) - 1;
+function rfToU(rf) {
+  return Math.log(1 + Math.max(0, rf) * FOLD_E) / FOLD_K;
+}
+function uToRf(u) {
+  return (Math.exp(FOLD_K * u) - 1) / FOLD_E;
+}
+function frac(x) {
+  return x - Math.floor(x);
+}
+
 // per-wedge placement error, so the symmetry is never exact
 function makeSegmentError() {
   return {
@@ -152,6 +177,11 @@ export function createEngine() {
   let arcs = [];
   let sparkles = [];
   let motifs = [];
+  let streaks = [];
+  // fold travel: `flow` is the accumulated tunnel depth, `flowVel` eases
+  // toward the Fold knob so turning it never makes the pattern jump
+  let flow = 0;
+  let flowVel = 0;
   let bgBlobs = [];
   const segErrors = new Array(20).fill(0).map(() => makeSegmentError());
   const spriteCache = { hexA: null, hexB: null, spriteA: null, spriteB: null };
@@ -175,18 +205,38 @@ export function createEngine() {
     arcs = new Array(params.arcCount).fill(0).map(() => makeArc());
     sparkles = new Array(params.sparkleCount).fill(0).map(() => makeSparkle());
     motifs = new Array(params.motifCount ?? 4).fill(0).map(() => makeMotif());
+    streaks = new Array(params.streakCount ?? 6).fill(0).map(() => makeStreak());
     bgBlobs = [makeBgBlob("A"), makeBgBlob("A"), makeBgBlob("B"), makeBgBlob("B")];
   }
 
   function update(dt, params, levels) {
     // rotation, hue cycling and particle orbits all ride this audio-driven clock
-    time += (dt / 60) * motionDrive(levels, params.audioReactivity);
+    const drive = motionDrive(levels, params.audioReactivity);
+    time += (dt / 60) * drive;
+    const fold = params.fold ?? 0;
+    // a kick gives the tunnel a little jump to light speed
+    const flowTarget = fold * 0.22 * drive + Math.sign(fold) * levels.punch * 0.25 * params.audioReactivity;
+    flowVel += (flowTarget - flowVel) * Math.min(1, 0.05 * dt);
+    flow += (flowVel * dt) / 60;
+    const streakCount = params.streakCount ?? 6;
+    if (streakCount !== streaks.length) syncArray(streaks, streakCount, makeStreak);
     if (params.particlesPerWedge !== particles.length) syncArray(particles, params.particlesPerWedge, makeParticle);
     if (params.shapeCount !== shapes.length) syncArray(shapes, params.shapeCount, makeShape);
     if (params.arcCount !== arcs.length) syncArray(arcs, params.arcCount, makeArc);
     if (params.sparkleCount !== sparkles.length) syncArray(sparkles, params.sparkleCount, makeSparkle);
     const motifCount = params.motifCount ?? 4;
     if (motifCount !== motifs.length) syncArray(motifs, motifCount, makeMotif);
+  }
+
+  // moves a radius fraction along the tunnel; returns [rf, fade]. With no
+  // fold travel it is the identity, so the still pattern looks as before.
+  // Elements fade in at the center and out at the rim so the wrap never pops.
+  function folded(rf) {
+    const u = frac(rfToU(rf) + flow);
+    const fadeIn = Math.min(1, u / 0.12);
+    const fadeOut = Math.min(1, (1 - u) / 0.08);
+    const amount = Math.min(1, Math.abs(flowVel) * 20 + Math.abs(flow) * 20);
+    return [uToRf(u), 1 - amount * (1 - Math.min(fadeIn, fadeOut))];
   }
 
   function drawBackgroundWash(ctx, params, levels, cx, cy) {
@@ -225,11 +275,12 @@ export function createEngine() {
     const boil = Math.floor(time * 6);
     for (let i = 0; i < arcs.length; i++) {
       const a = arcs[i];
-      const r = a.baseR * maxRadius;
+      const [rf, fade] = folded(a.baseR);
+      const r = rf * maxRadius;
       const spread = halfWedge * a.spreadFrac;
       const center = a.centerFrac * halfWedge + Math.sin(time * a.driftSpeed) * halfWedge * 0.1;
       const mixT = clamp01(0.5 + 0.5 * Math.sin(time * params.hueSpeed * 1.2) + a.hueOffset * 0.3 - 0.15);
-      const col = lerpRgba(params.colorA, params.colorB, mixT, 0.15 + 0.35 * mid * react);
+      const col = lerpRgba(params.colorA, params.colorB, mixT, (0.15 + 0.35 * mid * react) * fade);
 
       ctx.strokeStyle = col;
       ctx.lineWidth = Math.max(0.4, (1.5 + 2.5 * mid * react) * (1 + a.widthErr * w));
@@ -256,7 +307,8 @@ export function createEngine() {
       const s = shapes[i];
       const angle = ((i + 0.5) / shapes.length) * halfWedge;
       const spread = (halfWedge / shapes.length) * 0.9 * (0.5 + 0.5 * Math.sin(time * s.speed + s.phase));
-      const radius = maxRadius * (0.25 + 0.65 * s.baseR) * (1 + bass * react * 0.35);
+      const [rf, fade] = folded(0.25 + 0.65 * s.baseR);
+      const radius = maxRadius * rf * (1 + bass * react * 0.35);
       const a1 = angle - spread / 2;
       const a2 = angle + spread / 2;
       const j = s.jitter;
@@ -269,7 +321,7 @@ export function createEngine() {
       const y0 = j[5] * off * 0.5;
 
       const mixT = clamp01(0.5 + 0.5 * Math.sin(time * params.hueSpeed + s.hueOffset * Math.PI * 2));
-      const col = lerpRgba(params.colorA, params.colorB, mixT, 0.08 + 0.22 * bass * react);
+      const col = lerpRgba(params.colorA, params.colorB, mixT, (0.08 + 0.22 * bass * react) * fade);
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.moveTo(x0, y0);
@@ -304,13 +356,14 @@ export function createEngine() {
           Math.sin(time * p.radiusSpeed + p.radiusPhase) * p.wobbleAmp * params.wobble * (1 + bass * react) +
           chaosWobble(time, chaos * 0.15, p.chaosSeed + 7)
       );
-      const radius = radiusFrac * maxRadius;
+      const [rf, fade] = folded(radiusFrac);
+      const radius = rf * maxRadius;
       const x = radius * Math.cos(angle);
       const y = radius * Math.sin(angle);
 
       const size = Math.max(0.4, params.particleSize * (1.4 + 2.2 * treble * react) * (1 + (p.sizeMul - 1) * w));
       const localMix = clamp01(mixT + p.hueOffset * 0.4 - 0.2);
-      const alpha = Math.min(1, 0.45 + 0.4 * mid * react);
+      const alpha = Math.min(1, 0.45 + 0.4 * mid * react) * fade;
       const col = lerpRgba(params.colorA, params.colorB, localMix, alpha);
 
       // glow halo: a cached sprite stamped via drawImage, not a live shadowBlur
@@ -326,7 +379,8 @@ export function createEngine() {
       ctx.arc(x, y, size * 0.6, 0, Math.PI * 2);
       ctx.fill();
 
-      if (havePrev && !p.breakBefore) {
+      // a link across the tunnel wrap would slash through the whole wedge
+      if (havePrev && !p.breakBefore && Math.abs(radius - Math.hypot(prevX, prevY)) < maxRadius * 0.4) {
         ctx.strokeStyle = lerpRgba(params.colorA, params.colorB, localMix, 0.25 * Math.min(1, params.glow));
         ctx.lineWidth = 1;
         // links sag/bow instead of running dead straight
@@ -353,14 +407,14 @@ export function createEngine() {
       const sp = sparkles[i];
       const angleFrac = clamp01(0.5 + 0.5 * Math.sin(time * sp.angleSpeed + sp.anglePhase) + chaosWobble(time, chaos, sp.chaosSeed));
       const angle = angleFrac * halfWedge;
-      const radiusFrac = clamp01(0.5 + 0.5 * Math.sin(time * sp.radiusSpeed + sp.radiusPhase));
-      const radius = radiusFrac * maxRadius;
+      const [rf, fade] = folded(clamp01(0.5 + 0.5 * Math.sin(time * sp.radiusSpeed + sp.radiusPhase)));
+      const radius = rf * maxRadius;
       const x = radius * Math.cos(angle);
       const y = radius * Math.sin(angle);
 
       const flicker = 0.4 + 0.6 * Math.abs(Math.sin(time * 4 + sp.flickerSeed));
       const size = 0.5 + 1.8 * treble * react * flicker;
-      const alpha = Math.min(1, (0.2 + 0.6 * treble * react) * flicker);
+      const alpha = Math.min(1, (0.2 + 0.6 * treble * react) * flicker) * fade;
       if (size <= 0.1 || alpha <= 0.02) continue;
 
       const col = lerpRgba(params.colorA, params.colorB, flicker, alpha);
@@ -381,13 +435,16 @@ export function createEngine() {
       const m = motifs[i];
       const drift = Math.sin(time * m.driftSpeed + m.driftPhase);
       const angle = clamp01(m.angleFrac + drift * 0.12) * halfWedge;
-      const radius = clamp01(m.radiusFrac + drift * 0.05) * maxRadius;
+      const [rf, fade] = folded(clamp01(m.radiusFrac + drift * 0.05));
+      const radius = rf * maxRadius;
       const x = radius * Math.cos(angle);
       const y = radius * Math.sin(angle);
-      const len = maxRadius * m.size * (1 + mid * react * 0.5);
+      // perspective: motifs grow as they rush toward the rim
+      const depthScale = 1 + (Math.min(1, Math.abs(flowVel) * 20) * (rf - m.radiusFrac)) * 1.2;
+      const len = maxRadius * m.size * (1 + mid * react * 0.5) * Math.max(0.2, depthScale);
       const mixT = clamp01(0.5 + 0.5 * Math.sin(time * params.hueSpeed * 1.5 + m.hueOffset * Math.PI * 2));
 
-      ctx.strokeStyle = lerpRgba(params.colorA, params.colorB, mixT, 0.3 + 0.4 * mid * react);
+      ctx.strokeStyle = lerpRgba(params.colorA, params.colorB, mixT, (0.3 + 0.4 * mid * react) * fade);
       ctx.lineWidth = Math.max(0.6, 1 + 1.5 * mid * react);
       ctx.beginPath();
       const rot = angle + time * m.spin;
@@ -413,7 +470,32 @@ export function createEngine() {
     }
   }
 
+  // light-speed streaks: radial dashes that stretch as they fly out (or
+  // shrink as they fall in); only visible while the tunnel is moving
+  function drawStreaks(ctx, params, levels, halfWedge, maxRadius) {
+    const vis = Math.min(1, Math.abs(flowVel) * 6);
+    if (vis <= 0.01 || streaks.length === 0) return;
+    const react = params.audioReactivity;
+    ctx.lineCap = "round";
+    ctx.lineWidth = Math.max(0.6, 1 + (levels.treble || 0) * react);
+    for (let i = 0; i < streaks.length; i++) {
+      const st = streaks[i];
+      const u = frac(st.u + flow * st.speed);
+      const r0 = uToRf(u) * maxRadius;
+      const r1 = uToRf(Math.min(1.2, u + st.len)) * maxRadius;
+      const fade = Math.min(1, u / 0.15) * Math.min(1, (1 - u) / 0.1 + 0.3);
+      const ang = st.angleFrac * halfWedge;
+      const mixT = clamp01(0.5 + 0.5 * Math.sin(time * params.hueSpeed + st.hueOffset * Math.PI * 2));
+      ctx.strokeStyle = lerpRgba(params.colorA, params.colorB, mixT, 0.55 * vis * fade);
+      ctx.beginPath();
+      ctx.moveTo(r0 * Math.cos(ang), r0 * Math.sin(ang));
+      ctx.lineTo(r1 * Math.cos(ang), r1 * Math.sin(ang));
+      ctx.stroke();
+    }
+  }
+
   function drawWedgeContent(ctx, params, levels, halfWedge, maxRadius, sprites) {
+    drawStreaks(ctx, params, levels, halfWedge, maxRadius);
     drawArcs(ctx, params, levels, halfWedge, maxRadius);
     drawMotifs(ctx, params, levels, halfWedge, maxRadius);
     drawShapes(ctx, params, levels, halfWedge, maxRadius);
@@ -462,8 +544,10 @@ export function createEngine() {
     const halfWedge = wedgeAngle / 2;
     // half-diagonal so the pattern reaches every corner of the screen, not just the shorter side
     const maxRadius = Math.hypot(width, height) / 2;
+    // the chaos sway scales with the Rotation knob, so 0 holds perfectly still
+    const sway = Math.min(1, Math.abs(params.rotationSpeed) * 4);
     const globalRotation =
-      time * params.rotationSpeed * 0.3 + chaosWobble(time * 0.5, params.chaos * 0.6, 42);
+      time * params.rotationSpeed * 0.3 + chaosWobble(time * 0.5, params.chaos * 0.6 * sway, 42);
     const zoom = 1 + (bass * 0.15 + levels.punch * 0.12) * react;
 
     ensureSprites(params.colorA, params.colorB);

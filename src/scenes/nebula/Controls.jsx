@@ -39,6 +39,7 @@ export default function NebulaControls({ params, setParam, applyPreset, randomiz
         <Knob label="Twinkle" value={params.twinkle} min={0} max={1.5} onChange={(v) => setParam("twinkle", v)} accent="#ff6a3d" />
         <Knob label="Glow" value={params.glow} min={0} max={2.5} onChange={(v) => setParam("glow", v)} accent="#ff9466" />
         <Knob label="Swirl" value={params.swirl} min={0} max={2} onChange={(v) => setParam("swirl", v)} accent="#ff9466" />
+        <Knob label="Fold" value={params.fold ?? 0} min={-1} max={1} onChange={(v) => setParam("fold", v)} accent="#ff5c3d" />
         <Knob label="Shockwave" value={params.shockwave} min={0} max={2} onChange={(v) => setParam("shockwave", v)} accent="#d91a00" />
         <Knob label="Streaks" value={params.streaks} min={0} max={1.5} onChange={(v) => setParam("streaks", v)} accent="#ffb38a" />
         <Knob label="Link Dist" value={params.linkDistance} min={40} max={300} step={1} onChange={(v) => setParam("linkDistance", v)} accent="#ffb38a" />
