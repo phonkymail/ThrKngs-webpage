@@ -6,7 +6,7 @@ const CONTACT_EMAIL = "contact@thrkngs.ongaku.band";
 const VINYL = {
   title: "ThrKngs (Full Album)",
   format: "Vinyl LP",
-  specs: ["12\u2033 vinyl LP, 33\u2153 RPM", "Black vinyl", "11 compositions"],
+  specs: ["12\u2033 vinyl LP, 33\u2153 RPM", "Black vinyl", "11 compositions", "Total length 37:09"],
 };
 
 const STREAMING = [
