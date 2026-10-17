@@ -14,6 +14,7 @@ const STREAMING = [
   { name: "Apple Music", icon: "applemusic", href: "https://music.apple.com/dk/artist/thrkngs/943974854?l=da" },
   { name: "Deezer", icon: "deezer", href: "https://www.deezer.com/en/artist/7124191" },
   { name: "YouTube", icon: "youtube", href: "https://www.youtube.com/@thrkngs" },
+  { name: "SoundCloud", icon: "soundcloud", href: "https://soundcloud.com/thrkngs" },
 ];
 
 const SOCIAL = [
