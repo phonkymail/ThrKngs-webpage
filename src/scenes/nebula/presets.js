@@ -1,13 +1,13 @@
 // the look the page opens with (no colors: those come from the global settings)
 export const defaultParams = {
-  dustCount: 570,
-  nodeCount: 52,
+  dustCount: 600,
+  nodeCount: 30,
   floatSpeed: 0.31,
   twinkle: 0.45,
   linkDistance: 204,
   linkOpacity: 0.38,
   glow: 1.52,
-  audioReactivity: 0.46,
+  audioReactivity: 0.22,
   swirl: 0,
   fold: 0.04,
   spinMode: "ccw",
