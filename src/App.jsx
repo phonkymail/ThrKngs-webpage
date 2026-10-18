@@ -10,6 +10,7 @@ import { scenes, sceneOrder } from "./scenes";
 import { tracks } from "./lib/tracks";
 import { createDynamics } from "./lib/audioDynamics";
 import { defaultGlobal, sceneFilter, beatLevels, reactLevels } from "./lib/globalParams";
+import { extendColors, randomPalette } from "./lib/palette";
 import { SHORTCUTS } from "./lib/shortcuts";
 
 const IDLE_HIDE_MS = 3000;
@@ -17,9 +18,9 @@ const GUIDE_MS = 7000;
 const SEEK_STEP_S = 10;
 
 // colors live in the global settings, so scene presets/randomizers hand
-// theirs over instead of keeping them per scene
+// theirs over instead of keeping them per scene (C and D follow A and B)
 function splitColors({ colorA, colorB, ...rest }) {
-  return [rest, colorA && colorB ? { colorA, colorB } : null];
+  return [rest, colorA && colorB ? extendColors({ colorA, colorB }) : null];
 }
 
 export default function App() {
@@ -66,15 +67,14 @@ export default function App() {
   );
 
   // what the engine draws with: scene params plus the global layer on top
+  // (colors are added per frame by the Visualizer, from the Color FX)
   const renderParams = useMemo(
     () => ({
       ...params,
-      colorA: global.colorA,
-      colorB: global.colorB,
       audioReactivity: params.audioReactivity * global.masterReact,
       hitFx: global.hitFx,
     }),
-    [params, global.colorA, global.colorB, global.masterReact, global.hitFx]
+    [params, global.masterReact, global.hitFx]
   );
 
   // auto-load the first track on page load (guarded against StrictMode's double effect)
@@ -120,8 +120,9 @@ export default function App() {
     const [rest, colors] = splitColors(scenes[sceneKey].randomizeParams());
     const level = reactLevelByScene[sceneKey];
     if (level !== undefined) rest.audioReactivity = reactLevels[level];
+    for (const key of scenes[sceneKey].speedKeys ?? []) delete rest[key];
     setParamsByScene((prev) => ({ ...prev, [sceneKey]: { ...prev[sceneKey], ...rest } }));
-    if (randomColors && colors) setGlobalState((g) => ({ ...g, ...colors }));
+    if (randomColors && colors) setGlobalState((g) => ({ ...g, ...randomPalette() }));
   }, [sceneKey, randomColors, reactLevelByScene]);
 
   const { status, togglePlay } = audio;
@@ -304,6 +305,7 @@ export default function App() {
       <Visualizer
         sceneKey={sceneKey}
         params={renderParams}
+        colorFx={global}
         getFrame={getFrame}
         onClick={onScreenClick}
         speed={global.masterSpeed}

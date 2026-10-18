@@ -5,8 +5,9 @@
 // `wrongness` param deliberately breaks that perfection: each wedge sits at a
 // slightly wrong angle/scale/offset, mirrors don't quite line up, lines are
 // wobbly and hand-drawn, sizes are uneven and wedges occasionally drop out.
-import { rand, rgba, lerpRgba } from "../../lib/color";
-import { motionDrive, applyShake, drawFlash } from "../../lib/audioDynamics";
+import { rand, rgba } from "../../lib/color";
+import { paletteRgba } from "../../lib/palette";
+import { drawFlash } from "../../lib/audioDynamics";
 import { LOGO_STROKES } from "../../lib/logo";
 
 function clamp01(x) {
@@ -58,7 +59,7 @@ function makeArc() {
 }
 
 // shapes a motif can take; "mixed" gives each motif its own
-export const MOTIF_SHAPES = ["crystal", "triangle", "circle", "square", "diamond", "star", "hexagon", "logo"];
+export const MOTIF_SHAPES = ["crystal", "triangle", "circle", "square", "diamond", "hexagon", "logo"];
 
 // a small object: by default crystal-like (a few short arms, each with a
 // mirrored pair of barbs), so it is symmetric in itself before the wedge
@@ -218,6 +219,18 @@ export function createEngine() {
   // toward the Fold knob so turning it never makes the pattern jump
   let flow = 0;
   let flowVel = 0;
+  // drum hits arrive as instant jumps; the kaleidoscope eases them in over a
+  // few frames so the pattern swells with the beat instead of twitching
+  const smooth = { bass: 0, mid: 0, treble: 0, overall: 0, punch: 0 };
+
+  function smoothLevels(levels, dt) {
+    for (const k in smooth) {
+      const v = levels[k] || 0;
+      const rate = v > smooth[k] ? 0.22 : 0.07;
+      smooth[k] += (v - smooth[k]) * (1 - Math.pow(1 - rate, dt));
+    }
+    return { ...levels, ...smooth };
+  }
   let bgBlobs = [];
   const segErrors = new Array(20).fill(0).map(() => makeSegmentError());
   const spriteCache = { hexA: null, hexB: null, spriteA: null, spriteB: null };
@@ -245,13 +258,16 @@ export function createEngine() {
     bgBlobs = [makeBgBlob("A"), makeBgBlob("A"), makeBgBlob("B"), makeBgBlob("B")];
   }
 
-  function update(dt, params, levels) {
-    // rotation, hue cycling and particle orbits all ride this audio-driven clock
-    const drive = motionDrive(levels, params.audioReactivity);
+  function update(dt, params, rawLevels) {
+    const levels = smoothLevels(rawLevels, dt);
+    // rotation, hue cycling and particle orbits all ride this clock. It
+    // follows the slow journey only (calm sections drift, peaks move), never
+    // Audio React: that knob drives the layers, not the speed
+    const drive = 0.55 + 0.6 * (levels.energy || 0);
     time += (dt / 60) * drive;
     const fold = params.fold ?? 0;
     // a kick gives the tunnel a little jump to light speed
-    const flowTarget = fold * 0.22 * drive + Math.sign(fold) * levels.punch * 0.25 * params.audioReactivity;
+    const flowTarget = fold * 0.22 * drive + Math.sign(fold) * levels.punch * 0.12;
     flowVel += (flowTarget - flowVel) * Math.min(1, 0.05 * dt);
     flow += (flowVel * dt) / 60;
     const streakCount = params.streakCount ?? 6;
@@ -316,10 +332,10 @@ export function createEngine() {
       const spread = halfWedge * a.spreadFrac;
       const center = a.centerFrac * halfWedge + Math.sin(time * a.driftSpeed) * halfWedge * 0.1;
       const mixT = clamp01(0.5 + 0.5 * Math.sin(time * params.hueSpeed * 1.2) + a.hueOffset * 0.3 - 0.15);
-      const col = lerpRgba(params.colorA, params.colorB, mixT, (0.15 + 0.35 * mid * react) * fade);
+      const col = paletteRgba(params, mixT, Math.min(1, 0.15 + 0.55 * mid * react) * fade);
 
       ctx.strokeStyle = col;
-      ctx.lineWidth = Math.max(0.4, (1.5 + 2.5 * mid * react) * (1 + a.widthErr * w));
+      ctx.lineWidth = Math.max(0.4, (1.5 + 3.5 * mid * react) * (1 + a.widthErr * w));
       ctx.beginPath();
       const steps = 14;
       for (let k = 0; k <= steps; k++) {
@@ -344,7 +360,7 @@ export function createEngine() {
       const angle = ((i + 0.5) / shapes.length) * halfWedge;
       const spread = (halfWedge / shapes.length) * 0.9 * (0.5 + 0.5 * Math.sin(time * s.speed + s.phase));
       const [rf, fade] = folded(0.25 + 0.65 * s.baseR);
-      const radius = maxRadius * rf * (1 + bass * react * 0.35);
+      const radius = maxRadius * rf * (1 + bass * react * 0.55);
       const a1 = angle - spread / 2;
       const a2 = angle + spread / 2;
       const j = s.jitter;
@@ -357,7 +373,7 @@ export function createEngine() {
       const y0 = j[5] * off * 0.5;
 
       const mixT = clamp01(0.5 + 0.5 * Math.sin(time * params.hueSpeed + s.hueOffset * Math.PI * 2));
-      const col = lerpRgba(params.colorA, params.colorB, mixT, (0.08 + 0.22 * bass * react) * fade);
+      const col = paletteRgba(params, mixT, Math.min(0.8, 0.08 + 0.4 * bass * react) * fade);
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.moveTo(x0, y0);
@@ -397,10 +413,10 @@ export function createEngine() {
       const x = radius * Math.cos(angle);
       const y = radius * Math.sin(angle);
 
-      const size = Math.max(0.4, params.particleSize * (1.4 + 2.2 * treble * react) * (1 + (p.sizeMul - 1) * w));
+      const size = Math.max(0.4, params.particleSize * (1.4 + 3 * treble * react) * (1 + (p.sizeMul - 1) * w));
       const localMix = clamp01(mixT + p.hueOffset * 0.4 - 0.2);
-      const alpha = Math.min(1, 0.45 + 0.4 * mid * react) * fade;
-      const col = lerpRgba(params.colorA, params.colorB, localMix, alpha);
+      const alpha = Math.min(1, 0.4 + 0.6 * mid * react) * fade;
+      const col = paletteRgba(params, localMix, alpha);
 
       // glow halo: a cached sprite stamped via drawImage, not a live shadowBlur
       const glowR = size * (2.2 + 1.8 * params.glow);
@@ -417,7 +433,7 @@ export function createEngine() {
 
       // a link across the tunnel wrap would slash through the whole wedge
       if (havePrev && !p.breakBefore && Math.abs(radius - Math.hypot(prevX, prevY)) < maxRadius * 0.4) {
-        ctx.strokeStyle = lerpRgba(params.colorA, params.colorB, localMix, 0.25 * Math.min(1, params.glow));
+        ctx.strokeStyle = paletteRgba(params, localMix, 0.25 * Math.min(1, params.glow));
         ctx.lineWidth = 1;
         // links sag/bow instead of running dead straight
         const mx = (prevX + x) / 2;
@@ -449,11 +465,11 @@ export function createEngine() {
       const y = radius * Math.sin(angle);
 
       const flicker = 0.4 + 0.6 * Math.abs(Math.sin(time * 4 + sp.flickerSeed));
-      const size = 0.5 + 1.8 * treble * react * flicker;
-      const alpha = Math.min(1, (0.2 + 0.6 * treble * react) * flicker) * fade;
+      const size = 0.5 + 2.4 * treble * react * flicker;
+      const alpha = Math.min(1, (0.2 + 0.8 * treble * react) * flicker) * fade;
       if (size <= 0.1 || alpha <= 0.02) continue;
 
-      const col = lerpRgba(params.colorA, params.colorB, flicker, alpha);
+      const col = paletteRgba(params, flicker, alpha);
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.arc(x, y, size, 0, Math.PI * 2);
@@ -477,11 +493,11 @@ export function createEngine() {
       const y = radius * Math.sin(angle);
       // perspective: motifs grow as they rush toward the rim
       const depthScale = 1 + (Math.min(1, Math.abs(flowVel) * 20) * (rf - m.radiusFrac)) * 1.2;
-      const len = maxRadius * m.size * (1 + mid * react * 0.5) * Math.max(0.2, depthScale);
+      const len = maxRadius * m.size * (1 + mid * react * 0.8) * Math.max(0.2, depthScale);
       const mixT = clamp01(0.5 + 0.5 * Math.sin(time * params.hueSpeed * 1.5 + m.hueOffset * Math.PI * 2));
 
-      ctx.strokeStyle = lerpRgba(params.colorA, params.colorB, mixT, (0.3 + 0.4 * mid * react) * fade);
-      ctx.lineWidth = Math.max(0.6, 1 + 1.5 * mid * react);
+      ctx.strokeStyle = paletteRgba(params, mixT, Math.min(1, 0.3 + 0.6 * mid * react) * fade);
+      ctx.lineWidth = Math.max(0.6, 1 + 2.2 * mid * react);
       ctx.beginPath();
       const rot = angle + time * m.spin;
       const shape = params.motifShape === "mixed" ? m.kind : params.motifShape ?? "crystal";
@@ -513,8 +529,6 @@ export function createEngine() {
         const inner = len * m.barbPos * jit(1);
         ctx.moveTo(x + inner, y);
         ctx.arc(x, y, inner, 0, Math.PI * 2);
-      } else if (shape === "star") {
-        tracePolygon(ctx, x, y, len, 10, rot, (k) => (k % 2 ? 0.45 : 1) * jit(k));
       } else if (shape === "logo") {
         traceLogo(ctx, x, y, len * 1.4, rot, jit);
       } else {
@@ -535,7 +549,7 @@ export function createEngine() {
     if (vis <= 0.01 || streaks.length === 0) return;
     const react = params.audioReactivity;
     ctx.lineCap = "round";
-    ctx.lineWidth = Math.max(0.6, 1 + (levels.treble || 0) * react);
+    ctx.lineWidth = Math.max(0.6, 1 + (levels.treble || 0) * react * 1.6);
     for (let i = 0; i < streaks.length; i++) {
       const st = streaks[i];
       const u = frac(st.u + flow * st.speed);
@@ -544,7 +558,7 @@ export function createEngine() {
       const fade = Math.min(1, u / 0.15) * Math.min(1, (1 - u) / 0.1 + 0.3);
       const ang = st.angleFrac * halfWedge;
       const mixT = clamp01(0.5 + 0.5 * Math.sin(time * params.hueSpeed + st.hueOffset * Math.PI * 2));
-      ctx.strokeStyle = lerpRgba(params.colorA, params.colorB, mixT, 0.55 * vis * fade);
+      ctx.strokeStyle = paletteRgba(params, mixT, 0.55 * vis * fade);
       ctx.beginPath();
       ctx.moveTo(r0 * Math.cos(ang), r0 * Math.sin(ang));
       ctx.lineTo(r1 * Math.cos(ang), r1 * Math.sin(ang));
@@ -566,15 +580,16 @@ export function createEngine() {
     const r = Math.min(width, height) * (0.05 + overall * params.audioReactivity * 0.06);
     if (r <= 0) return;
     const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    grad.addColorStop(0, lerpRgba(params.colorA, params.colorB, 0.5, 0.5 + 0.3 * overall));
-    grad.addColorStop(1, lerpRgba(params.colorA, params.colorB, 0.5, 0));
+    grad.addColorStop(0, paletteRgba(params, 0.5, 0.5 + 0.3 * overall));
+    grad.addColorStop(1, paletteRgba(params, 0.5, 0));
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  function draw(ctx, baseParams, levels) {
+  function draw(ctx, baseParams, rawLevels) {
+    const levels = { ...rawLevels, ...smooth };
     const cx = width / 2;
     const cy = height / 2;
     const react = baseParams.audioReactivity;
@@ -583,7 +598,7 @@ export function createEngine() {
     // quiet: smooth, long trails, calm; loud: chaotic, jittery, crisp and glowing
     const params = {
       ...baseParams,
-      chaos: baseParams.chaos * (0.3 + 1.7 * energy) + levels.punch * 0.4 * react,
+      chaos: baseParams.chaos * (0.3 + 1.7 * energy),
       wobble: baseParams.wobble * (0.6 + 0.9 * energy),
       glow: baseParams.glow * (0.7 + 0.6 * energy + levels.punch * 0.5 * react),
       trailFade: Math.min(1, baseParams.trailFade * (0.7 + 0.8 * energy)),
@@ -606,13 +621,12 @@ export function createEngine() {
     const sway = Math.min(1, Math.abs(params.rotationSpeed) * 4);
     const globalRotation =
       time * params.rotationSpeed * 0.3 + chaosWobble(time * 0.5, params.chaos * 0.6 * sway, 42);
-    const zoom = 1 + (bass * 0.15 + levels.punch * 0.12) * react;
+    const zoom = 1 + (bass * 0.1 + levels.punch * 0.06) * react;
 
     ensureSprites(params.colorA, params.colorB);
 
     ctx.save();
     const hitFx = react * (baseParams.hitFx ?? 1);
-    applyShake(ctx, levels, hitFx);
     // the whole pattern wanders slightly off-center
     const wander = params.wrongness * Math.min(width, height) * 0.025;
     ctx.translate(cx + Math.sin(time * 0.31) * wander, cy + Math.sin(time * 0.23 + 1) * wander);

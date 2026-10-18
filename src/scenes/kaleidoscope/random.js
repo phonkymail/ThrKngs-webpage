@@ -30,6 +30,5 @@ export function randomizeParams() {
     sparkleCount: randInt(0, 20),
     backgroundIntensity: rand(0, 0.1),
     backgroundSpeed: rand(0.05, 0.5),
-    wrongness: rand(0.35, 0.9),
   };
 }

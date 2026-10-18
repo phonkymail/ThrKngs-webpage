@@ -48,7 +48,7 @@ const classic = {
   sparkleCount: 14,
   backgroundIntensity: 0.06,
   backgroundSpeed: 0.2,
-  wrongness: 0.6,
+  wrongness: 0,
 };
 
 export const presets = {

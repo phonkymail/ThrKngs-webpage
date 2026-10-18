@@ -27,7 +27,18 @@ function KaleidoscopeIcon() {
   );
 }
 
-const icons = { nebula: NebulaIcon, kaleidoscope: KaleidoscopeIcon };
+// Spe: spectrum hills receding in perspective
+function SpectrumIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1" aria-hidden="true">
+      <path d="M1 13c2 0 2.5-4 4-4s2 2.5 3.5 2.5S10 6 11.5 6 13.5 13 15 13" />
+      <path d="M2.5 9.5c1.5 0 2-2.5 3-2.5s1.5 1.5 2.5 1.5S9.5 4 10.5 4s1.5 5.5 3 5.5" strokeOpacity="0.6" />
+      <path d="M4 6c1 0 1.5-1.5 2.2-1.5S7.3 5.5 8 5.5 9 3 9.8 3 11 6 12 6" strokeOpacity="0.35" />
+    </svg>
+  );
+}
+
+const icons = { nebula: NebulaIcon, kaleidoscope: KaleidoscopeIcon, spectrum: SpectrumIcon };
 
 // the scene's icon, or its text label for a scene without one
 export function SceneIcon({ sceneKey, fallback }) {

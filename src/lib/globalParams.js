@@ -1,9 +1,21 @@
 // Settings shared by every scene (the "Global" tab in the controls panel).
 export const defaultGlobal = {
-  // colors used by both scenes; presets set them, randomize may too
+  // layer colors used by every scene; presets set A and B (C and D follow
+  // them), randomize may set all four
   colorA: "#ff2a06",
   colorB: "#ff9466",
+  colorC: "#ff5c1f",
+  colorD: "#ffd0a0",
+  // how many of the four layers the scenes' gradients run through
+  colorLayers: 2,
   randomColors: true,
+  // Color FX, applied live on top of the layer colors (see lib/palette)
+  hueShift: 0,
+  saturation: 1,
+  neon: 0,
+  colorCycle: 0,
+  hueDrift: 0,
+  beatColor: false,
 
   // beat-driven automation
   autoRandomize: false,
@@ -16,9 +28,9 @@ export const defaultGlobal = {
   autoScene: false,
   sceneInterval: 30,
 
-  // which part of the spectrum drives the visuals: "highs" (high-mid and
-  // up, so the heavy bass doesn't trigger everything) or "full"
-  reactBand: "highs",
+  // what drives the visuals: "drums" (kick and snare hits), "highs"
+  // (high-mid and up, so the heavy bass doesn't trigger everything) or "full"
+  reactBand: "drums",
 
   // master multipliers on top of each scene's own settings
   masterReact: 1,
@@ -50,13 +62,23 @@ export const beatLevels = {
 // the scene buttons in the top bar
 export const reactLevels = { 0: 0, 1: 0.2, 2: 0.45, 3: 0.75, 4: 1.1, 5: 1.5 };
 
+// four layer colors each; with fewer layers only the first ones are used
 export const palettes = {
-  Ember: ["#ff2a06", "#ff9466"],
-  Blood: ["#d91a00", "#6e1a3a"],
-  Gold: ["#ffb02f", "#ff2a06"],
-  Ash: ["#c9b8a6", "#5a4a40"],
-  Indigo: ["#4b5bcf", "#c94b8f"],
-  Neon: ["#2fe3ff", "#ff2fd0"],
+  Ember: ["#ff2a06", "#ff9466", "#ff5c1f", "#ffd0a0"],
+  Blood: ["#d91a00", "#6e1a3a", "#ff3d2e", "#2a0a14"],
+  Gold: ["#ffb02f", "#ff2a06", "#ffe08a", "#c45a00"],
+  Ash: ["#c9b8a6", "#5a4a40", "#8c7b6e", "#e8ddd0"],
+  Indigo: ["#4b5bcf", "#c94b8f", "#2a2f7a", "#ff7ab8"],
+  Neon: ["#2fe3ff", "#ff2fd0", "#7a2fff", "#2fff9e"],
+  Synthwave: ["#ff2fb4", "#7a2fff", "#2fd4ff", "#ffb02f"],
+  Cyberpunk: ["#fcee0a", "#00f0ff", "#ff003c", "#7a00ff"],
+  Acid: ["#b6ff00", "#00ff9c", "#fff200", "#00c3ff"],
+  Laser: ["#ff0055", "#00ffd5", "#ff00ff", "#3d5cff"],
+  Miami: ["#ff6ec7", "#00e5ff", "#ffb86b", "#8a5cff"],
+  Toxic: ["#39ff14", "#00ffcc", "#ccff00", "#00a86b"],
+  Ultraviolet: ["#8a2be2", "#ff00ff", "#3d00ff", "#00e5ff"],
+  Electric: ["#00a2ff", "#00ffea", "#2b00ff", "#9ff0ff"],
+  Lava: ["#ff3c00", "#ffcc00", "#ff007b", "#ff7a00"],
 };
 
 // CSS filter that dims/ages the scene canvas

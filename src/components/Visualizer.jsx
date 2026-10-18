@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { scenes } from "../scenes";
 import { createModulator } from "../lib/modulation";
+import { createColorizer } from "../lib/palette";
 
-export default function Visualizer({ sceneKey, params, getFrame, onClick, speed = 1, filter, paused = false, modulation = 0 }) {
+export default function Visualizer({ sceneKey, params, colorFx, getFrame, onClick, speed = 1, filter, paused = false, modulation = 0 }) {
   const canvasRef = useRef(null);
   const engineRef = useRef(null);
   const paramsRef = useRef(params);
@@ -10,6 +11,9 @@ export default function Visualizer({ sceneKey, params, getFrame, onClick, speed 
   const rafRef = useRef(null);
 
   paramsRef.current = params;
+  const colorFxRef = useRef(colorFx);
+  colorFxRef.current = colorFx;
+  const [colorize] = useState(createColorizer);
   getFrameRef.current = getFrame;
   const speedRef = useRef(speed);
   speedRef.current = speed;
@@ -58,7 +62,8 @@ export default function Visualizer({ sceneKey, params, getFrame, onClick, speed 
         return;
       }
       const levels = getFrameRef.current(now);
-      const p = modulate(paramsRef.current, scenes[sceneKey].modulated, modulationRef.current, dt, levels.energy);
+      const colors = colorize(colorFxRef.current, levels, now, dt);
+      const p = { ...modulate(paramsRef.current, scenes[sceneKey].modulated, modulationRef.current, dt, levels.energy), ...colors };
       engine.update(dt, p, levels);
       engine.draw(ctx, p, levels, dt);
 

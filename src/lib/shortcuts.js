@@ -5,7 +5,7 @@ export const SHORTCUTS = [
   ["f", "fullscreen"],
   ["c", "controls"],
   ["r", "random on beat"],
-  ["1 2", "scenes"],
+  ["1 2 3", "scenes"],
   ["← →", "skip 10s"],
   ["m", "mute"],
 ];

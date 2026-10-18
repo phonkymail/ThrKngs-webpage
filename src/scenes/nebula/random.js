@@ -1,6 +1,6 @@
 import { rand, randInt, hslToHex } from "../../lib/color";
 
-const SPECTRALIZER_STYLES = ["radial-bars", "radial-dots", "wave-ring", "mirror-bars", "logo"];
+const SPECTRALIZER_STYLES = ["radial-bars", "radial-dots"];
 
 export function randomizeParams() {
   const hueA = rand(0, 360);
@@ -28,7 +28,7 @@ export function randomizeParams() {
     streaks: rand(0.2, 1.2),
     spectralizerStyle: Math.random() < 0.9 ? SPECTRALIZER_STYLES[randInt(0, SPECTRALIZER_STYLES.length - 1)] : "off",
     spectralizerBars: randInt(16, 100),
-    spectralizerSize: rand(0.06, 0.28),
+    spectralizerSize: rand(0.02, 0.28),
     spectralizerSensitivity: rand(0.4, 2),
     spectralizerOpacity: rand(0.2, 0.8),
   };

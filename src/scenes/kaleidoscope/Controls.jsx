@@ -9,7 +9,6 @@ const motifShapes = [
   ["circle", "Circle"],
   ["square", "Square"],
   ["diamond", "Diamond"],
-  ["star", "Star"],
   ["hexagon", "Hexagon"],
   ["logo", "ThrKngs"],
   ["mixed", "Mixed"],

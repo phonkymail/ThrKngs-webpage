@@ -5,9 +5,9 @@
 //   outward; they spring back, so the field breathes with the kick
 // - loudness spins the field into a galaxy swirl (faster near the center)
 // - fast-moving stars leave streaks, so drops read as warp speed
-import { rand, lerpRgba } from "../../lib/color";
+import { rand } from "../../lib/color";
+import { paletteRgba } from "../../lib/palette";
 import { motionDrive } from "../../lib/audioDynamics";
-import { LOGO_STROKES } from "../../lib/logo";
 
 function makeDrifter(w, h) {
   const x = rand(0, w);
@@ -351,7 +351,7 @@ export function createEngine() {
     const op = params.layer2Opacity ?? 0.6;
     for (const o of orbiters) {
       o.twinklePhase += 0.02 * o.twinkleSpeed;
-      ctx.fillStyle = lerpRgba(params.colorA, params.colorB, o.hue, op * (0.45 + 0.4 * Math.sin(o.twinklePhase)));
+      ctx.fillStyle = paletteRgba(params, o.hue, op * (0.45 + 0.4 * Math.sin(o.twinklePhase)));
       ctx.beginPath();
       ctx.arc(o.x, o.y, o.size, 0, Math.PI * 2);
       ctx.fill();
@@ -439,7 +439,7 @@ export function createEngine() {
       const x1 = cx + Math.cos(angle) * (baseR + len);
       const y1 = cy + Math.sin(angle) * (baseR + len);
 
-      const col = lerpRgba(params.colorA, params.colorB, i / bars.length, op * (0.15 + 0.55 * avg));
+      const col = paletteRgba(params, i / bars.length, op * (0.15 + 0.55 * avg));
       ctx.strokeStyle = col;
       ctx.shadowColor = col;
       ctx.shadowBlur = 8 * params.glow * avg * op;
@@ -461,98 +461,13 @@ export function createEngine() {
       const y = cy + Math.sin(angle) * r;
       const size = 1 + avg * 3;
 
-      const col = lerpRgba(params.colorA, params.colorB, i / bars.length, op * (0.2 + 0.5 * avg));
+      const col = paletteRgba(params, i / bars.length, op * (0.2 + 0.5 * avg));
       ctx.fillStyle = col;
       ctx.shadowColor = col;
       ctx.shadowBlur = 6 * params.glow * avg * op;
       ctx.beginPath();
       ctx.arc(x, y, size, 0, Math.PI * 2);
       ctx.fill();
-    }
-  }
-
-  function drawWaveRing(ctx, params, bars, cx, cy, baseR, maxLen) {
-    const op = params.spectralizerOpacity;
-    const rotation = spin * 0.04;
-    ctx.beginPath();
-    for (let i = 0; i <= bars.length; i++) {
-      const avg = bars[i % bars.length];
-      const angle = (i / bars.length) * Math.PI * 2 - Math.PI / 2 + rotation;
-      const r = baseR + avg * maxLen * 0.8;
-      const x = cx + Math.cos(angle) * r;
-      const y = cy + Math.sin(angle) * r;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-
-    const lineCol = lerpRgba(params.colorA, params.colorB, 0.5, op * 0.6);
-    ctx.strokeStyle = lineCol;
-    ctx.lineWidth = 1.25;
-    ctx.shadowColor = lineCol;
-    ctx.shadowBlur = 8 * params.glow * op;
-    ctx.stroke();
-
-    ctx.fillStyle = lerpRgba(params.colorA, params.colorB, 0.5, op * 0.06);
-    ctx.fill();
-  }
-
-  function drawMirrorBars(ctx, params, bars, cx, cy, baseR, maxLen) {
-    const op = params.spectralizerOpacity;
-    const totalWidth = baseR * 4.5;
-    const barW = totalWidth / bars.length;
-    const startX = cx - totalWidth / 2;
-    for (let i = 0; i < bars.length; i++) {
-      const avg = bars[i];
-      const h = Math.max(1.5, avg * maxLen * 0.6);
-      const x = startX + i * barW + barW * 0.15;
-      const w = Math.max(1, barW * 0.7);
-
-      const col = lerpRgba(params.colorA, params.colorB, i / bars.length, op * (0.15 + 0.5 * avg));
-      ctx.fillStyle = col;
-      ctx.shadowColor = col;
-      ctx.shadowBlur = 5 * params.glow * avg * op;
-      ctx.fillRect(x, cy - h, w, h * 2);
-    }
-  }
-
-  // the ThrKngs mark as glowing light-painting strokes that swell with the
-  // music, with flares at the stroke ends kicking on the beat
-  function drawLogo(ctx, params, cx, cy, baseR, levels) {
-    const op = params.spectralizerOpacity;
-    const overall = levels.overall || 0;
-    const punch = levels.punch || 0;
-    const r = baseR * 1.5;
-    const pt = ([x, y]) => [cx + x * r, cy + y * r];
-
-    // the mark itself, white-hot like the light trails on the cover
-    const core = lerpRgba(params.colorB, "#ffffff", 0.75, op * (0.7 + 0.3 * overall));
-    ctx.strokeStyle = core;
-    ctx.shadowColor = lerpRgba(params.colorA, params.colorB, 0.5, 1);
-    ctx.shadowBlur = (12 + 20 * overall) * params.glow * op;
-    ctx.lineWidth = Math.max(1.5, r * 0.035 * (1 + overall * 0.3));
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.beginPath();
-    for (const stroke of LOGO_STROKES) {
-      stroke.forEach((p, i) => {
-        const [x, y] = pt(p);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-    }
-    ctx.stroke();
-
-    // bright flares at the stroke ends, kicking with the beat
-    ctx.fillStyle = `rgba(255,255,255,${op * (0.8 + 0.2 * punch)})`;
-    const dot = r * 0.04 * (1 + punch * 1.2);
-    for (const stroke of LOGO_STROKES) {
-      for (const p of [stroke[0], stroke[stroke.length - 1]]) {
-        const [x, y] = pt(p);
-        ctx.beginPath();
-        ctx.arc(x, y, dot, 0, Math.PI * 2);
-        ctx.fill();
-      }
     }
   }
 
@@ -569,12 +484,6 @@ export function createEngine() {
     ctx.save();
     if (params.spectralizerStyle === "radial-dots") {
       drawRadialDots(ctx, params, bars, cx, cy, baseR, maxLen);
-    } else if (params.spectralizerStyle === "wave-ring") {
-      drawWaveRing(ctx, params, bars, cx, cy, baseR, maxLen);
-    } else if (params.spectralizerStyle === "mirror-bars") {
-      drawMirrorBars(ctx, params, bars, cx, cy, baseR, maxLen);
-    } else if (params.spectralizerStyle === "logo") {
-      drawLogo(ctx, params, cx, cy, baseR, levels);
     } else {
       drawRadialBars(ctx, params, bars, cx, cy, baseR, maxLen);
     }
@@ -584,8 +493,8 @@ export function createEngine() {
       const op = params.spectralizerOpacity;
       const coreR = baseR * (0.6 + overall * 0.3);
       const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
-      coreGrad.addColorStop(0, lerpRgba(params.colorA, params.colorB, 0.5, op * (0.3 + 0.25 * overall)));
-      coreGrad.addColorStop(1, lerpRgba(params.colorA, params.colorB, 0.5, 0));
+      coreGrad.addColorStop(0, paletteRgba(params, 0.5, op * (0.3 + 0.25 * overall)));
+      coreGrad.addColorStop(1, paletteRgba(params, 0.5, 0));
       ctx.shadowBlur = 0;
       ctx.fillStyle = coreGrad;
       ctx.beginPath();
@@ -604,7 +513,7 @@ export function createEngine() {
     for (const wave of waves) {
       // fades smoothly as it travels out; never pops in bright
       const fade = Math.pow(Math.max(0, 1 - wave.r / maxR), 1.5);
-      ctx.strokeStyle = lerpRgba(params.colorA, params.colorB, wave.r / maxR, Math.min(0.25, wave.strength * 0.4) * fade);
+      ctx.strokeStyle = paletteRgba(params, wave.r / maxR, Math.min(0.25, wave.strength * 0.4) * fade);
       ctx.beginPath();
       ctx.arc(cx, cy, wave.r, 0, Math.PI * 2);
       ctx.stroke();
